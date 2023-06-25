@@ -1,0 +1,8 @@
+pytorch_warmup
+matplotlib
+scikit-image
+tqdm
+PyYaml
+wget
+torch-summary
+wandb

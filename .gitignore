@@ -1,0 +1,15 @@
+*.zip
+.vscode/
+__pycache__/
+/runs/
+*.pth
+*.pt
+.DS_Store
+*.ini
+/figures/*.png
+.ipynb_checkpoints
+
+*.pkl
+*.sh
+/wandb/
+/ckpt/
