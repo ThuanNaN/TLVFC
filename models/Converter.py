@@ -1,6 +1,6 @@
 import numpy as np
 import torch.nn as nn
-from models.TranferKernel import TransferKernel
+from models.TransferWeight import TransferWeight 
 
 
 class Converter():
@@ -50,13 +50,16 @@ class Converter():
                                                         w_index=layer_idx,
                                                         scale=scale)
 
-                new_w = TransferKernel(ckpt_weight=ckpt_dict[f"conv_{conv_index}"],
-                                       model_weight=model_dict[f"conv_{layer_idx}"],
-                                       )._choose_kernel(**kwargs)
+                new_w = TransferWeight(src_weight=ckpt_dict[f"conv_{conv_index}"],
+                                            dst_weight=model_dict[f"conv_{layer_idx}"],
+                                            **kwargs)._transfer()
             else:
-                new_w = TransferKernel(ckpt_weight=ckpt_dict[f"conv_{layer_idx}"],
-                                       model_weight=model_dict[f"conv_{layer_idx}"],
-                                       )._choose_kernel(**kwargs)
+
+                new_w = TransferWeight(src_weight=ckpt_dict[f"conv_{layer_idx}"],
+                                       dst_weight=model_dict[f"conv_{layer_idx}"],
+                                       **kwargs)._transfer()
+                
+                pass
 
             new_model_dict[layer_idx] = new_w
 

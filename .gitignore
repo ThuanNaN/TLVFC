@@ -9,6 +9,13 @@ __pycache__/
 /figures/*.png
 .ipynb_checkpoints
 
+
+/data/Intel
+/data/CIFAR10
+/data/PetImages
+
+
+
 *.pkl
 *.sh
 /wandb/

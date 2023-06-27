@@ -1,1 +1,1 @@
-# cp-weight via varience tesst
+# cp-weight via varience v2 - merge shuffle kernel
