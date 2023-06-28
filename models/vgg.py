@@ -1,8 +1,8 @@
 from typing import cast, List, Union
+from collections import OrderedDict
 import torch
 import torch.nn as nn
 from config.vgg_configs import cfgs
-from models.utils import download_ckpt, replace_center
 from timm.models.layers import trunc_normal_
 
 def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False, k_size=3,  pad=1) -> nn.Sequential:
@@ -68,10 +68,18 @@ class VGG(nn.Module):
         x = self.classifier(x)
         return x
 
+    def _get_feature_dict(self) -> OrderedDict:
+        feature_dict = OrderedDict()
+        for name, param in self.named_parameters():
+            split_named = name.split(".")
+            if split_named[0] == "features" and split_named[-1] == "weight":
+                feature_dict[name] = param
+        return feature_dict
 
-def get_model(model_type: str, base_init: str, num_classes: int):
 
-    if model_type == "vgg16_5x5_init":
+def vgg_get_model(model_name: str, base_init: str, num_classes: int):
+
+    if model_name == "vgg16_5x5_init":
         model = VGG(
             features=make_layers(cfgs["D"], batch_norm=False,
                                  k_size=5, pad="same"),
@@ -81,45 +89,11 @@ def get_model(model_type: str, base_init: str, num_classes: int):
             dropout=0.5,
             last_chanels=512
         )
-
-    elif model_type == "vgg16_5x5_padding0":
-        model = VGG(
-            features=make_layers(cfgs["D"], batch_norm=False,
-                                 k_size=5, pad="same"),
-            num_classes=num_classes,
-            init_weights=True,
-            base_init=base_init,
-            dropout=0.5,
-            last_chanels=512
-        )
-        vgg16_ckpt = download_ckpt()
-        for idx, module in model.features._modules.items():
-            if module.__class__.__name__ == 'Conv2d':
-                ckpt_w = vgg16_ckpt[f"features.{idx}.weight"]
-                new_w = nn.ConstantPad2d((1, 1, 1, 1), 0)(ckpt_w)
-                module.weight = nn.parameter.Parameter(new_w)
-
-    elif model_type == "vgg16_5x5_paddingBaseInit":
-        model = VGG(
-            features=make_layers(cfgs["D"], batch_norm=False,
-                                 k_size=5, pad="same"),
-            num_classes=num_classes,
-            init_weights=True,
-            base_init=base_init,
-            dropout=0.5,
-            last_chanels=512
-        )
-        vgg16_ckpt = download_ckpt()
-        for idx, module in model.features._modules.items():
-            if module.__class__.__name__ == 'Conv2d':
-                ckpt_w = vgg16_ckpt[f"features.{idx}.weight"]
-                new_w = replace_center(ckpt_w, module.weight)
-                module.weight = nn.parameter.Parameter(new_w)
 
 
 # ----------------STAGE 2--------------------------------------------
 
-    elif model_type == "vgg16_5x5_Down":
+    elif model_name == "vgg16_5x5_Down":
         model = VGG(
             features=make_layers(cfgs["D-Down"], batch_norm=False,
                                  k_size=5, pad="same"),
@@ -131,8 +105,7 @@ def get_model(model_type: str, base_init: str, num_classes: int):
         )
 
 
-
-    elif model_type == "vgg16_5x5_Up":
+    elif model_name == "vgg16_5x5_Up":
         model = VGG(
             features=make_layers(cfgs["D-Up"], batch_norm=False,
                                  k_size=5, pad="same"),
@@ -144,7 +117,7 @@ def get_model(model_type: str, base_init: str, num_classes: int):
         )
 
 
-    elif model_type == "vgg16_5x5_DownUp":
+    elif model_name == "vgg16_5x5_DownUp":
         model = VGG(
             features=make_layers(cfgs["D-DownUp"], batch_norm=False,
                                  k_size=5, pad="same"),
@@ -157,7 +130,7 @@ def get_model(model_type: str, base_init: str, num_classes: int):
 
 
 
-    elif model_type == "vgg16_5x5_Sort":
+    elif model_name == "vgg16_5x5_Sort":
         model = VGG(
             features=make_layers(cfgs["D-Sort"], batch_norm=False,
                                  k_size=5, pad="same"),
@@ -169,7 +142,7 @@ def get_model(model_type: str, base_init: str, num_classes: int):
         )
 
 
-    elif model_type == "vgg16_5x5_Long":
+    elif model_name == "vgg16_5x5_Long":
         model = VGG(
             features=make_layers(cfgs["D-Long"], batch_norm=False,
                                  k_size=5, pad="same"),

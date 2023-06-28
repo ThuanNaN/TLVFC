@@ -1,4 +1,3 @@
-import torch.nn as nn
 from typing import Dict, List, Union
 
 cfgs: Dict[str, List[Union[str, int]]] = {
@@ -25,34 +24,6 @@ cfgs: Dict[str, List[Union[str, int]]] = {
 
 }
 
-
-#version: ImageNet1K_V1
-ckpt_url : Dict = {
-    "vgg11": {
-        "url": "https://download.pytorch.org/models/vgg11-8a719046.pth",
-        "file_name": "vgg11-8a719046.pth"
-    },
-    "vgg13": {
-        "url": "https://download.pytorch.org/models/vgg13-19584684.pth",
-        "file_name": "vgg13-19584684.pth"
-    },
-
-    "vgg16": {
-        "url": "https://download.pytorch.org/models/vgg16-397923af.pth",
-        "file_name": "vgg16-397923af.pth"
-    },
-
-    "vgg19": {
-        "url": "https://download.pytorch.org/models/vgg19-dcbb9e9d.pth",
-        "file_name": "vgg19-dcbb9e9d.pth"
-    },
-}
-
-
-feature_index : Dict = {
-    "vgg16": [0, 2, 5, 7, 10, 12, 14, 17, 19, 21, 24, 26, 28],
-
-}
 
 
 

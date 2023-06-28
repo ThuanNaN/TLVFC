@@ -8,13 +8,12 @@ import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import MultiStepLR
 import pytorch_warmup as warmup
-from utils.general import colorstr, save_ckpt_, plot_and_log_result
-from config.vgg_configs import feature_index
-from models.vgg import get_model
-from models.utils import download_ckpt
-from models.Converter import Converter
+from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result
+from models.vgg import vgg_get_model
+from models.resnet import resnet_get_model
+from models.utils import GetPretrain_RESNET, GetPretrain_VGG, apply_new_feature
+from converter.Converter import Converter
 from torchsummary import summary
-
 
 logging.getLogger().setLevel(logging.INFO)
 logging.basicConfig(format="%(message)s", level=logging.INFO)
@@ -31,7 +30,8 @@ def train_model(opt, dataloaders, wandb):
     LOGGER.info(f"\n{colorstr('Device:')} {device}")
 
     if opt.log_result:
-        DIR_SAVE = "./runs/train/{}/run_seed_{}".format(opt.name, opt.seed)
+        DIR_SAVE = AppPath.RUN_TRAIN_DIR / \
+            "{}/run_seed_{}".format(opt.name, opt.seed)
         os.makedirs(DIR_SAVE)
         save_opt = os.path.join(DIR_SAVE, "opt.yaml")
         with open(save_opt, 'w') as f:
@@ -49,39 +49,47 @@ def train_model(opt, dataloaders, wandb):
             int(0.8 * total_step),
         ]
 
-    LOGGER.info(f"\n{colorstr('Model type:')} {opt.model_type}")
+    LOGGER.info(f"\n{colorstr('Model name:')} {opt.model_name}")
     LOGGER.info(f"\n{colorstr('Weight initialization:')} {opt.base_init}")
 
-    model = get_model(model_type=opt.model_type,
-                      base_init=opt.base_init,
-                      num_classes=opt.num_classes,
-                      )
-
+    if opt.model_group == "vgg":
+        model = vgg_get_model(model_name=opt.model_name,
+                              base_init=opt.base_init,
+                              num_classes=opt.num_classes,
+                              )
+    elif opt.model_group == "resnet":
+        model = resnet_get_model(model_name=opt.model_name,
+                                 base_init=opt.base_init,
+                                 num_classes=opt.num_classes,
+                                 )
     if opt.transfer_weight:
         LOGGER.info(f"\n{colorstr('Weight mapping type:')} {opt.mapping_type}")
         if opt.mapping_type == "relative":
-            LOGGER.info(f"\n{colorstr('Method choose candidate:')} {opt.cand_select_method}")
-            LOGGER.info(f"\n{colorstr('Number of candidate:')} {opt.num_candidate}")
+            LOGGER.info(
+                f"\n{colorstr('Method choose candidate:')} {opt.cand_select_method}")
+            LOGGER.info(
+                f"\n{colorstr('Number of candidate:')} {opt.num_candidate}")
 
-        vgg16_ckpt = download_ckpt()
-        converter = Converter(model = model, 
-                              ckpt=vgg16_ckpt, 
-                              feature_index=feature_index["vgg16"],
-                              candidate_method = opt.cand_select_method,
-                              mapping_type=opt.mapping_type)
+        model_feature_dict = model._get_feature_dict()
+        pretrain_feature_dict = GetPretrain_VGG(model_group='vgg',
+                                                model_name='vgg16').get_feature_dict()
 
-        LOGGER.info(f"\n{colorstr('Method keep weight:')} {opt.keep}")
-        LOGGER.info(f"\n{colorstr('Method remove weight:')} {opt.remove}")
+        new_feature_dict = Converter(dst_feature_dict=model_feature_dict,
+                                     src_feature_dict=pretrain_feature_dict,
+                                     mapping_type=opt.mapping_type,
+                                     candidate_method=opt.cand_select_method,
+                                     )._matching(type_pad=opt.type_pad,
+                                                 type_pool=opt.type_pool,
+                                                 num_candidate=opt.num_candidate,
+                                                 choice_method={
+                                                     "keep": opt.keep,
+                                                     "remove": opt.remove
+                                                 })
 
-        model = converter._load_weight(
-                                        type_pad=opt.type_pad,
-                                        type_pool=opt.type_pool,
-                                        num_candidate=opt.num_candidate,
-                                        choice_method={
-                                                        "keep": opt.keep, 
-                                                        "remove": opt.remove
-                                                        },
-                                    )
+        new_state_dict = apply_new_feature(state_dict=model.state_dict(),
+                                           new_feature_dict=new_feature_dict)
+        model.load_state_dict(new_state_dict)
+
 
     if opt.show_summary:
         summary(model, (3, opt.image_sz, opt.image_sz))

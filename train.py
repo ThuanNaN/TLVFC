@@ -1,9 +1,10 @@
-import argparse
 import os
+import argparse
 from utils.trainer import train_model, test_model
-from utils.general import seed_everything
+from utils.general import seed_everything, AppPath
 from custom_datasets.dataset import get_dataloader
 import wandb
+
 
 seed_everything(2)
 
@@ -18,8 +19,13 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=2, 
                         help='random seed will start at seed = 2 (default: %(default)s)')
     
-    parser.add_argument('--model-type', type=str, default='vgg16_5x5_Down', \
-                        choices= ['vgg16_5x5_Down', 'vgg16_5x5_Up', 'vgg16_5x5_DownUp', 'vgg16_5x5_Sort', 'vgg16_5x5_Long'],\
+    parser.add_argument('--model-group', type=str, default='resnet', \
+                        choices= ['vgg', 'resnet'],\
+                        help='The group of model. ["vgg", "resnet"] (default: %(default)s)')
+    
+    parser.add_argument('--model-name', type=str, default='vgg16_5x5_Down', \
+                        choices= ['vgg16_5x5_Down', 'vgg16_5x5_Up', 'vgg16_5x5_DownUp', 'vgg16_5x5_Sort', 'vgg16_5x5_Long',  \
+                                  'resnet18', 'resnet34'],\
                         help='The type of initialization model. \
                             ["vgg16_5x5_Down", "vgg16_5x5_Up", "vgg16_5x5_DownUp"] (default: %(default)s)')
     
@@ -127,11 +133,10 @@ if __name__ == '__main__':
     else:
         wandb = None
 
-    train_folder = os.path.join("./runs", "train")
-    os.makedirs(train_folder, exist_ok=True)
     if opt.log_result:
-        if os.path.exists(os.path.join(train_folder, opt.name)):
-            raise Exception("Project name exists")
+        AppPath.RUN_DIR.mkdir(parents=True, exist_ok=True)
+        AppPath.RUN_TRAIN_DIR.mkdir(parents=True, exist_ok=False)
+
 
     lst_val_acc = []
     lst_test_acc = []

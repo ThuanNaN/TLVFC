@@ -1,5 +1,6 @@
 import copy
 import os
+from pathlib import Path
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -130,4 +131,9 @@ def emojis(str=''):
     # Return platform-dependent emoji-safe version of string
     return str.encode().decode('ascii', 'ignore') if platform.system() == 'Windows' else str
 
+
+class AppPath:
+    ROOT_DIR = Path(".")
+    RUN_DIR = ROOT_DIR / "runs"
+    RUN_TRAIN_DIR = RUN_DIR / "train"
 
