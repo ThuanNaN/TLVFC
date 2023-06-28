@@ -1,5 +1,6 @@
 import os
 import torchvision
+from torchvision import transforms
 from torchvision import datasets
 from torch.utils.data import Dataset, DataLoader
 from torchvision.datasets import CIFAR10, CIFAR100
@@ -41,8 +42,10 @@ def get_dataloader(data_name, data_root, image_sz, seed, batch_size, num_workers
         mean = config["dataset_normalize"]["CIFAR10"]["mean"]
         std = config["dataset_normalize"]["CIFAR10"]["std"]
         data_transforms = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize(
+            # transforms.RandomCrop(32, padding=4),
+            # transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(
                 mean=tuple(mean),
                 std=tuple(std)
             )
@@ -54,10 +57,10 @@ def get_dataloader(data_name, data_root, image_sz, seed, batch_size, num_workers
     elif data_name == "PetImages":
         mean = config["dataset_normalize"]["Pet"]["mean"]
         std = config["dataset_normalize"]["Pet"]["std"]
-        data_transforms = torchvision.transforms.Compose([
-            torchvision.transforms.Resize((image_sz, image_sz)),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize(
+        data_transforms = transforms.Compose([
+            transforms.Resize((image_sz, image_sz)),
+            transforms.ToTensor(),
+            transforms.Normalize(
                 mean=tuple(mean),
                 std=tuple(std)
             )
@@ -80,10 +83,10 @@ def get_dataloader(data_name, data_root, image_sz, seed, batch_size, num_workers
     else:
         mean = config["dataset_normalize"]["Intel"]["mean"]
         std = config["dataset_normalize"]["Intel"]["std"]
-        data_transforms = torchvision.transforms.Compose([
-            torchvision.transforms.Resize((image_sz, image_sz)),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize(
+        data_transforms = transforms.Compose([
+            transforms.Resize((image_sz, image_sz)),
+            transforms.ToTensor(),
+            transforms.Normalize(
                     mean=tuple(mean),
                     std=tuple(std)
                 )
@@ -100,6 +103,12 @@ def get_dataloader(data_name, data_root, image_sz, seed, batch_size, num_workers
         "val":   DataLoader(train_dataset, sampler=val_sampler, batch_size=batch_size),
         "test":  DataLoader(test_dataset, batch_size=batch_size),
     }
+
+    # dataloaders = {
+    #     "train": DataLoader(train_dataset, batch_size=batch_size, num_workers=num_workers),
+    #     "val":   DataLoader(test_dataset, batch_size=batch_size),
+    #     "test":  DataLoader(test_dataset, batch_size=batch_size),
+    # }
 
     return num_classes, dataloaders
 
