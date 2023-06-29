@@ -1,12 +1,21 @@
-dataset_normalize:
+dataset_config:
   Intel:
-    mean: [0.4301, 0.4574, 0.4537]
-    std: [0.2694, 0.2679, 0.2983]
+    mean: [0.4302, 0.4575, 0.4542] #no aug 
+    std: [0.2694, 0.2679, 0.2984] #no aug
+    image_size: 150
+    num_classes: 6
 
   CIFAR10: 
-    mean: [0.4913, 0.4821, 0.4465]
-    std: [0.2470, 0.2435, 0.2616]
+    mean: [0.4910, 0.4817, 0.4461]  #no aug
+    std: [0.2473, 0.2438, 0.2617] #no aug
+    image_size: 32
+    num_classes: 10
 
-  Pet: 
-    mean: [0.4879, 0.4549, 0.4162]
-    std: [0.4879, 0.4549, 0.4162]
+  PetImages: 
+    mean: [0.4889, 0.4559, 0.4176] #no aug
+    std: [0.2596, 0.2530, 0.2557] #no aug
+    image_size: 224
+    num_classes: 2
+
+
+

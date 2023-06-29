@@ -1,9 +1,10 @@
 import os
+import wandb
 import argparse
 from utils.trainer import train_model, test_model
 from utils.general import seed_everything, AppPath
-from custom_datasets.dataset import get_dataloader
-import wandb
+from dataset_loader.dataset import get_train_valid_loader, get_test_loader
+from dataset_loader.dataset_utils import get_mean_and_std
 
 
 seed_everything(2)
@@ -143,14 +144,30 @@ if __name__ == '__main__':
     for i in range(opt.num_try):
         print(f"\n*** RUN ON SEED {opt.seed} ***")
 
-        opt.num_classes, dataloaders = get_dataloader(
-            data_name = opt.data_name,
-            data_root = opt.data_root,
-            image_sz = opt.image_sz,
-            seed = opt.seed,
+        opt.num_classes = 10
+        train_loader, val_loader = get_train_valid_loader(
+            dataset_name=opt.data_name,
+            data_dir=opt.data_root,
+            batch_size = opt.batch_size,
+            augment = False,
+            random_seed = opt.seed,
+            num_workers = opt.workers
+        )
+
+        print(get_mean_and_std(train_loader))
+
+        test_loader = get_test_loader(
+            dataset_name=opt.data_name,
+            data_dir=opt.data_root,
             batch_size = opt.batch_size,
             num_workers = opt.workers
         )
+
+        dataloaders = {
+            "train": train_loader,
+            "val": val_loader,
+            "test": test_loader,
+        }
 
         model, val_acc = train_model(opt = opt, dataloaders = dataloaders, wandb = wandb)
 
