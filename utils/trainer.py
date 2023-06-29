@@ -37,7 +37,9 @@ def train_model(opt, dataloaders, wandb):
         with open(save_opt, 'w') as f:
             yaml.dump(opt.__dict__, f, sort_keys=False)
 
-    total_step = len(dataloaders['train']) * num_epochs
+    steps_per_epoch = len(dataloaders['train'])
+    total_step = steps_per_epoch * num_epochs
+
     if opt.lr_step is not None:
         milestones = []
         for i in range(len(opt.lr_step)):
@@ -110,7 +112,8 @@ def train_model(opt, dataloaders, wandb):
         lr_scheduler = None
 
     if opt.adam and opt.warm_up:
-        warmup_scheduler = warmup.UntunedExponentialWarmup(optimizer)
+        # warmup_scheduler = warmup.UntunedExponentialWarmup(optimizer)
+        warmup_scheduler = warmup.LinearWarmup(optimizer, warmup_period=steps_per_epoch*opt.num_warm_up)
         LOGGER.info(
             f"\n{colorstr('Warm-up Scheduler:')} {type(warmup_scheduler).__name__}")
     else:

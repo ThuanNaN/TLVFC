@@ -96,6 +96,9 @@ if __name__ == '__main__':
     
     parser.add_argument('--warm-up', action='store_true', 
                         help='Scheduler warmup with learning rate in start training')
+    
+    parser.add_argument('--num-warm-up', type=int, default=10, 
+                        help='The number of epochs for warmup scheduler')
 
     parser.add_argument('--show-summary', action='store_true', 
                         help='Show model summary')
@@ -135,7 +138,7 @@ if __name__ == '__main__':
 
     if opt.log_result:
         AppPath.RUN_DIR.mkdir(parents=True, exist_ok=True)
-        AppPath.RUN_TRAIN_DIR.mkdir(parents=True, exist_ok=False)
+        AppPath.RUN_TRAIN_DIR.mkdir(parents=True, exist_ok=True)
 
 
     lst_val_acc = []
