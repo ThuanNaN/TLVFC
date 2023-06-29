@@ -24,32 +24,34 @@ if __name__ == '__main__':
                         choices= ['vgg', 'resnet'],\
                         help='The group of model. ["vgg", "resnet"] (default: %(default)s)')
     
-    parser.add_argument('--model-name', type=str, default='vgg16_5x5_Down', \
+    parser.add_argument('--model-name', type=str, default='vgg16_5x5_Down',
                         choices= ['vgg16_5x5_Down', 'vgg16_5x5_Up', 'vgg16_5x5_DownUp', 'vgg16_5x5_Sort', 'vgg16_5x5_Long',  \
                                   'resnet18', 'resnet34'],\
                         help='The type of initialization model. \
                             ["vgg16_5x5_Down", "vgg16_5x5_Up", "vgg16_5x5_DownUp"] (default: %(default)s)')
     
-    parser.add_argument('--base-init', type=str, default="He", required=True, choices= ['He', 'Glorot', 'Trunc'],
-                        help='The method to initialize for parameters ["He", "Glorot"] (default: %(default)s)')
+    parser.add_argument('--base-init', type=str, default="He", required=True,
+                        help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
     
     parser.add_argument('--transfer-weight', action='store_true', 
                         help='Using weight transfer method from pre-trained. \
                             If not, using method in flag --base-init for all parameters')
     
-    parser.add_argument('--keep', type=str,  \
-                        choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random'],
+    parser.add_argument('--keep', default='interLeaved', type=str, 
+                        # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random'], 
                         help='Method to choose for down weight when using --transfer-weight flag')
     
-    parser.add_argument('--remove', type=str, \
-                        choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random'],
+    parser.add_argument('--remove', default='random', type=str,
+                        # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random'], 
                         help='Method to choose for up weight when using --transfer-weight flag')
     
-    parser.add_argument('--type-pad', type=str, default="zero", choices= ['zero', 'init'],
+    parser.add_argument('--type-pad', type=str, default="zero", 
+                        # choices= ['zero', 'init'],
                         help='Add padding when up size kernel ["zero", "init"]. \
                             if use init, it is base on the --base-init method. (default: %(default)s)')
     
-    parser.add_argument('--type-pool', type=str, default="avg", choices= ['avg', 'max'],
+    parser.add_argument('--type-pool', type=str, default="avg", 
+                        # choices= ['avg', 'max'],
                         help='down size kernel ["avg", "max"]. Using when down size of kernel. (default: %(default)s)')
     
     parser.add_argument('--num-candidate', type=int, default=3, 
@@ -67,9 +69,6 @@ if __name__ == '__main__':
     
     parser.add_argument('--data-root', type=str, default="./data", 
                         help='Folder where the dataset is saved (default: %(default)s)')
-    
-    parser.add_argument('--image-sz', type=int, default=32, 
-                        help='Image size for data transforms (default: %(default)s)')
     
     parser.add_argument('--batch-size', type=int, default=256, 
                         help='Mini-batch size for each iteration when training model (default: %(default)s)')
@@ -153,8 +152,6 @@ if __name__ == '__main__':
             random_seed = opt.seed,
             num_workers = opt.workers
         )
-
-        print(get_mean_and_std(train_loader))
 
         test_loader = get_test_loader(
             dataset_name=opt.data_name,

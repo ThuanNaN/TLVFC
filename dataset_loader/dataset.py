@@ -62,7 +62,7 @@ def get_train_valid_loader(dataset_name,
         train_transform = transforms.Compose([
             transforms.Resize((image_size, image_size)),
             transforms.ToTensor(),
-            # normalize,
+            normalize,
         ])
 
     valid_transform = transforms.Compose([
