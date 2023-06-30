@@ -1,15 +1,9 @@
 from torchvision import transforms, datasets
 from torch.utils.data import Dataset, DataLoader
-from torchvision.datasets import CIFAR10
 from dataset_loader.dataset_utils import split_dataset
-from PIL import ImageFile
 
 import yaml
 from yaml.loader import SafeLoader
-
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-
 
 class Custom_Dataset(Dataset):
     def __init__(self, dir_path,  transform):
@@ -104,6 +98,7 @@ def get_train_valid_loader(dataset_name,
                                        transform=valid_transform)
 
         train_loader = DataLoader(train_dataset, 
+                                  shuffle=True,
                                   batch_size=batch_size, 
                                   num_workers=num_workers,
                                   pin_memory = pin_memory)

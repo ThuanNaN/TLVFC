@@ -1,6 +1,8 @@
 from collections import OrderedDict
 import numpy as np
-import torch.nn as nn
+import copy
+import torch
+from torch import Tensor
 from converter.TransferWeight import TransferWeight 
 
 
@@ -63,6 +65,11 @@ class Converter():
             copied_weight = TransferWeight(src_weight=src_weight,
                                             dst_weight=dst_weight,
                                             **kwargs)._transfer()
+
+            # copied_weight = replace_center(
+            #     src_tensor=src_weight,
+            #     dst_tensor=dst_weight
+            # )
                             
             new_feature_dict[dst_weight_name] = copied_weight
         return new_feature_dict
@@ -83,3 +90,23 @@ class Converter():
             return num_src_layer - 1
         else:
             return src_index
+
+
+@torch.no_grad()
+def replace_center(src_tensor: Tensor, dst_tensor: Tensor) -> Tensor:
+    new_weight = copy.deepcopy(dst_tensor)
+    src_slices, dst_slices = [], []
+    for src_shape, dst_shape in zip(src_tensor.shape, dst_tensor.shape):
+        if src_shape < dst_shape:
+            src_slices.append(slice(0,src_shape))
+            dst_slices.append(slice((dst_shape - src_shape) // 2, \
+                                    -((dst_shape - src_shape + 1) // 2)))
+        elif src_shape > dst_shape:
+            src_slices.append(slice((src_shape - dst_shape) // 2, \
+                                    -((src_shape - dst_shape + 1) // 2)))
+            dst_slices.append(slice(0, dst_shape))
+        else:
+            src_slices.append(slice(0, src_shape))
+            dst_slices.append(slice(0, dst_shape))
+    new_weight[tuple(dst_slices)] = src_tensor[tuple(src_slices)]
+    return new_weight

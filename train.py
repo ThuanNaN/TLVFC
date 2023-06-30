@@ -5,7 +5,8 @@ from utils.trainer import train_model, test_model
 from utils.general import seed_everything, AppPath
 from dataset_loader.dataset import get_train_valid_loader, get_test_loader
 from dataset_loader.dataset_utils import get_mean_and_std
-
+import yaml
+from yaml.loader import SafeLoader
 
 seed_everything(2)
 
@@ -101,7 +102,7 @@ if __name__ == '__main__':
                         help='The number of epochs for warmup scheduler')
 
     parser.add_argument('--show-summary', action='store_true', 
-                        help='Show model summary')
+                        help='Show model summary with default input size id (3, 224, 224)')
     
     parser.add_argument('--name', default='exp', 
                         help='Project name will saved at runs/train/__name__')
@@ -140,13 +141,16 @@ if __name__ == '__main__':
         AppPath.RUN_DIR.mkdir(parents=True, exist_ok=True)
         AppPath.RUN_TRAIN_DIR.mkdir(parents=True, exist_ok=True)
 
+    with open('./config/dataset.yaml') as f:
+        dataset_config = yaml.load(f, Loader=SafeLoader)
+
 
     lst_val_acc = []
     lst_test_acc = []
     for i in range(opt.num_try):
         print(f"\n*** RUN ON SEED {opt.seed} ***")
 
-        opt.num_classes = 10
+        opt.num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
         train_loader, val_loader = get_train_valid_loader(
             dataset_name=opt.data_name,
             data_dir=opt.data_root,

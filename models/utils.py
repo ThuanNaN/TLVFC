@@ -1,6 +1,5 @@
 from collections import OrderedDict
 import torch
-from torch import Tensor
 from torchvision.models.resnet import ResNet18_Weights, ResNet34_Weights
 from torchvision.models.vgg import VGG16_Weights, VGG19_Weights
 
@@ -88,15 +87,4 @@ def apply_new_feature(state_dict: OrderedDict,
             new_state_dict[name] = torch.nn.Parameter(new_feature_dict[name])
 
     return new_state_dict
-
-# def replace_center(ckpt: Tensor, weight: Tensor):
-#     weight.requires_grad = False
-#     ckpt_kernel_sz = ckpt.size(-1)
-#     pad_size = int(weight.size(-1)/ckpt_kernel_sz)
-#     for idx_f, filter in enumerate(weight):
-#         for idx_k, kernel in enumerate(filter):
-#             kernel[pad_size:pad_size+ckpt_kernel_sz,
-#                    pad_size:pad_size+ckpt_kernel_sz] = ckpt[idx_f][idx_k]
-#     return weight
-
 

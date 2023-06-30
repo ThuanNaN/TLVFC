@@ -263,18 +263,25 @@ class ResNet(nn.Module):
         feature_dict = OrderedDict()
         for name, param in self.named_parameters():
             split_named = name.split(".")
+
+            # First conv layer => 7x7 kernel size
             if len(split_named) == 2:
                 if split_named[0] in ["conv1", "conv2", "conv3"] and split_named[-1] == "weight":
                     feature_dict[name] = param
-            elif len(split_named) == 4:
+            
+            #Second conv layer => 3x3 kernel size
+            if len(split_named) == 4:
                 if split_named[2] in ["conv1", "conv2", "conv3"] and split_named[-1] == "weight":
                     feature_dict[name] = param
-            else: # len == 5
-                if split_named[2] == "downsample" and \
-                                    split_named[3] == "0" and \
-                                    split_named[-1] == "weight":
-                    # feature_dict[name] = param
-                    pass
+            
+            #Thirth conv layer => downsample conv
+            if len(split_named) == 5:
+                # if split_named[2] == "downsample" and \
+                #                     split_named[3] == "0" and \
+                #                     split_named[-1] == "weight":
+                #     feature_dict[name] = param
+                pass
+             
         return feature_dict
 
 

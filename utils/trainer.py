@@ -94,7 +94,7 @@ def train_model(opt, dataloaders, wandb):
 
 
     if opt.show_summary:
-        summary(model, (3, opt.image_sz, opt.image_sz))
+        summary(model, (3, 224, 224))
 
     if opt.adam:
         optimizer = torch.optim.Adam(
