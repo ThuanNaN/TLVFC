@@ -31,7 +31,7 @@ class Converter():
         print(f"Number of source feature layers: {len_src_feature_dict}")
         print(f"Number of target feature layers: {len_dst_feature_dict}")
 
-        scale = len_src_feature_dict / len_dst_feature_dict
+        scale = len_dst_feature_dict / len_src_feature_dict
 
         for layer_idx in range(len_dst_feature_dict):
             if scale != 1.0:
@@ -57,7 +57,10 @@ class Converter():
                     src_index = self._absolute_mapping(num_src_layer=len_src_feature_dict,
                                                         dst_index=layer_idx,
                                                         scale=scale)
-                    
+                    print(f"model layer's index: {layer_idx}")
+                    print(f"pretrain layer's index: {src_index}")
+
+
                 src_weight_name, src_weight = self.src_feature_list[src_index]
 
             else:
