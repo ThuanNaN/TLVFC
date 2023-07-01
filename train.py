@@ -155,7 +155,7 @@ if __name__ == '__main__':
             dataset_name=opt.data_name,
             data_dir=opt.data_root,
             batch_size = opt.batch_size,
-            augment = False,
+            augment = True,
             random_seed = opt.seed,
             num_workers = opt.workers
         )
