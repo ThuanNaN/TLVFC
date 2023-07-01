@@ -72,10 +72,22 @@ def train_model(opt, dataloaders, wandb):
             LOGGER.info(
                 f"\n{colorstr('Number of candidate:')} {opt.num_candidate}")
 
-        model_feature_dict = model._get_feature_dict()
-        pretrain_feature_dict = GetPretrain_VGG(model_group='vgg',
-                                                model_name='vgg16').get_feature_dict()
 
+        if opt.pretrain_group == "vgg":
+            pretrain_feature_dict = GetPretrain_VGG(
+                model_group='vgg',
+                model_name=opt.pretrain_name
+            ).get_feature_dict()
+
+        elif opt.pretrain_group == "resnet":
+            pretrain_feature_dict = GetPretrain_RESNET(
+                model_group="resnet",
+                model_name=opt.pretrain_name
+            ).get_feature_dict()
+        else:
+            pass
+
+        model_feature_dict = model._get_feature_dict()
         new_feature_dict = Converter(dst_feature_dict=model_feature_dict,
                                      src_feature_dict=pretrain_feature_dict,
                                      mapping_type=opt.mapping_type,

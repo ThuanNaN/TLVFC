@@ -79,7 +79,34 @@ class VGG(nn.Module):
 
 def vgg_get_model(model_name: str, base_init: str, num_classes: int):
 
-    if model_name == "vgg16_5x5_init":
+    # Origin vgg model
+
+    if model_name == "vgg16":
+        model = VGG(
+            features=make_layers(cfgs["D"], batch_norm=False,
+                                 k_size=3, pad="same"),
+            num_classes=num_classes,
+            init_weights=True,
+            base_init=base_init,
+            dropout=0.5,
+            last_chanels=512
+        )
+
+
+    elif model_name == "vgg19":
+        pamodel = VGG(
+            features=make_layers(cfgs["E"], batch_norm=False,
+                                 k_size=3, pad="same"),
+            num_classes=num_classes,
+            init_weights=True,
+            base_init=base_init,
+            dropout=0.5,
+            last_chanels=512
+        )
+
+    #-------------
+
+    elif model_name == "vgg16_5x5_init":
         model = VGG(
             features=make_layers(cfgs["D"], batch_norm=False,
                                  k_size=5, pad="same"),

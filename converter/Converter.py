@@ -28,6 +28,9 @@ class Converter():
         new_feature_dict = OrderedDict()
         len_src_feature_dict = len(self.src_feature_dict)
         len_dst_feature_dict = len(self.dst_feature_dict)
+        print(f"Number of source feature layers: {len_src_feature_dict}")
+        print(f"Number of target feature layers: {len_dst_feature_dict}")
+
         scale = len_src_feature_dict / len_dst_feature_dict
 
         for layer_idx in range(len_dst_feature_dict):

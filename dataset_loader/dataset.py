@@ -51,7 +51,7 @@ def get_train_valid_loader(dataset_name,
             transforms.RandomCrop(image_size, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            normalize,
+            normalize, 
         ])
     else:
         train_transform = transforms.Compose([

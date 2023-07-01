@@ -27,9 +27,18 @@ if __name__ == '__main__':
     
     parser.add_argument('--model-name', type=str, default='vgg16_5x5_Down',
                         choices= ['vgg16_5x5_Down', 'vgg16_5x5_Up', 'vgg16_5x5_DownUp', 'vgg16_5x5_Sort', 'vgg16_5x5_Long',  \
-                                  'resnet18', 'resnet34'],\
-                        help='The type of initialization model. \
-                            ["vgg16_5x5_Down", "vgg16_5x5_Up", "vgg16_5x5_DownUp"] (default: %(default)s)')
+                                  'vgg16', 'vgg19', 'resnet18', 'resnet34'],\
+                        help='The type of initialization model. ["resnet18", "resnet34", "vgg16", "vgg19", \
+                            "vgg16_5x5_Down", "vgg16_5x5_Up", "vgg16_5x5_DownUp"] (default: %(default)s)')
+
+    parser.add_argument('--pretrain-group', type=str, default='vgg', \
+                        choices= ['vgg', 'resnet'],\
+                        help='The group of pretrain weight. ["vgg", "resnet"] (default: %(default)s)')
+    
+   
+    parser.add_argument('--pretrain-name', type=str, default='vgg16',
+                        help='The weight name of pretrain model. \
+                            ["vgg16", "vgg19", "resnet18", "resnet34"] (default: %(default)s)')
     
     parser.add_argument('--base-init', type=str, default="He", required=True,
                         help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
