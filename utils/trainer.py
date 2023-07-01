@@ -15,6 +15,7 @@ from models.utils import GetPretrain_RESNET, GetPretrain_VGG, apply_new_feature
 from converter.Converter import Converter
 from torchsummary import summary
 
+
 logging.getLogger().setLevel(logging.INFO)
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOGGER = logging.getLogger("Torch-Cls")
@@ -110,6 +111,9 @@ def train_model(opt, dataloaders, wandb):
 
     if opt.adam:
         optimizer = torch.optim.Adam(
+            model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
+    elif opt.adamW:
+        optimizer = torch.optim.AdamW(
             model.parameters(), lr=opt.lr, weight_decay=opt.weight_decay)
     else:
         optimizer = torch.optim.SGD(

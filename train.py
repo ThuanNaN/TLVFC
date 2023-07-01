@@ -92,6 +92,9 @@ if __name__ == '__main__':
     parser.add_argument('--adam', action='store_true', 
                         help='Use Adam optimier. If not, using SGD is a optimizer')
     
+    parser.add_argument('--adamW', action='store_true', 
+                        help='Use AdamW optimier. If not, using SGD is a optimizer')
+    
     parser.add_argument('--lr', type=float, default=1e-4, 
                         help='Learning rate for optimizer (default: %(default)s)')
     
@@ -164,7 +167,7 @@ if __name__ == '__main__':
             dataset_name=opt.data_name,
             data_dir=opt.data_root,
             batch_size = opt.batch_size,
-            augment = False,
+            augment = True,
             random_seed = opt.seed,
             num_workers = opt.workers
         )
