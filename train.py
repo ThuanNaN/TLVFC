@@ -27,9 +27,18 @@ if __name__ == '__main__':
     
     parser.add_argument('--model-name', type=str, default='vgg16_5x5_Down',
                         choices= ['vgg16_5x5_Down', 'vgg16_5x5_Up', 'vgg16_5x5_DownUp', 'vgg16_5x5_Sort', 'vgg16_5x5_Long',  \
-                                  'resnet18', 'resnet34'],\
-                        help='The type of initialization model. \
-                            ["vgg16_5x5_Down", "vgg16_5x5_Up", "vgg16_5x5_DownUp"] (default: %(default)s)')
+                                  'vgg16', 'vgg19', 'resnet18', 'resnet34'],\
+                        help='The type of initialization model. ["resnet18", "resnet34", "vgg16", "vgg19", \
+                            "vgg16_5x5_Down", "vgg16_5x5_Up", "vgg16_5x5_DownUp"] (default: %(default)s)')
+
+    parser.add_argument('--pretrain-group', type=str, default='vgg', \
+                        choices= ['vgg', 'resnet'],\
+                        help='The group of pretrain weight. ["vgg", "resnet"] (default: %(default)s)')
+    
+   
+    parser.add_argument('--pretrain-name', type=str, default='vgg16',
+                        help='The weight name of pretrain model. \
+                            ["vgg16", "vgg19", "resnet18", "resnet34"] (default: %(default)s)')
     
     parser.add_argument('--base-init', type=str, default="He", required=True,
                         help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
@@ -82,6 +91,9 @@ if __name__ == '__main__':
     
     parser.add_argument('--adam', action='store_true', 
                         help='Use Adam optimier. If not, using SGD is a optimizer')
+    
+    parser.add_argument('--adamW', action='store_true', 
+                        help='Use AdamW optimier. If not, using SGD is a optimizer')
     
     parser.add_argument('--lr', type=float, default=1e-4, 
                         help='Learning rate for optimizer (default: %(default)s)')
@@ -155,7 +167,7 @@ if __name__ == '__main__':
             dataset_name=opt.data_name,
             data_dir=opt.data_root,
             batch_size = opt.batch_size,
-            augment = False,
+            augment = True,
             random_seed = opt.seed,
             num_workers = opt.workers
         )

@@ -47,10 +47,11 @@ def get_train_valid_loader(dataset_name,
     )
     if augment:
         train_transform = transforms.Compose([
+            transforms.Resize((image_size + 2, image_size+2)),
             transforms.RandomCrop(image_size, padding=4),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            normalize,
+            normalize, 
         ])
     else:
         train_transform = transforms.Compose([
