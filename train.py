@@ -17,9 +17,12 @@ from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result, se
 from dataset_loader.dataset import get_train_valid_loader, get_test_loader
 
 from toolkit import TLV
-from toolkit.standardization import FlattenStandardization
-from toolkit.matching import DPFMatching
+from toolkit.standardization import FlattenStandardization, BlocksStandardization
+from toolkit.matching import DPFMatching, DPMatching
 from toolkit.transfer import VarTransfer
+
+from iatransfer.toolkit import IAT
+
 
 seed_everything(2)
 
@@ -159,7 +162,6 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     return model, best_val_acc.item()
 
 
-
 def test_model(model, test_loader, device):
     model.to(device)
     model.eval()
@@ -180,12 +182,11 @@ def test_model(model, test_loader, device):
     return acc.item()
 
 
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', default='cuda', choices = ['cuda', 'cpu'], \
+    parser.add_argument('--device', default='cuda', choices=['cuda', 'cpu'],
                         help='cuda device or cpu (default: %(default)s)')
-    parser.add_argument('--seed', type=int, default=2, 
+    parser.add_argument('--seed', type=int, default=2,
                         help='random seed will start at seed = 2 (default: %(default)s)')
     # choices= ['vgg', 'resnet']
     parser.add_argument('--model-group', type=str, default='resnet',
@@ -202,19 +203,19 @@ if __name__ == '__main__':
     parser.add_argument('--base-init', type=str, default="He",
                         help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
     # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
-    parser.add_argument('--keep', default='interLeaved', type=str, 
+    parser.add_argument('--keep', default='interLeaved', type=str,
                         help='Method to choose for down weight when using --transfer-weight flag')
     # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
     parser.add_argument('--remove', default='random', type=str,
                         help='Method to choose for up weight when using --transfer-weight flag')
     # choices= ['zero', 'init']
-    parser.add_argument('--type-pad', type=str, default="zero", 
+    parser.add_argument('--type-pad', type=str, default="zero",
                         help='Add padding when up size kernel. \
                             if use init, it is base on the --base-init method. (default: %(default)s)')
     # choices= ['avg', 'max']
-    parser.add_argument('--type-pool', type=str, default="avg", 
+    parser.add_argument('--type-pool', type=str, default="avg",
                         help='down size kernel. Using when down size of kernel. (default: %(default)s)')
-    # parser.add_argument('--num-candidate', type=int, default=3, 
+    # parser.add_argument('--num-candidate', type=int, default=3,
     #                     help='The number of cadidate nearest to matching weight (default: %(default)s)')
     # choices= ['max', 'min']
     # parser.add_argument('--cand-select-method', type=str, default="max",
@@ -224,36 +225,36 @@ if __name__ == '__main__':
     #                     help='Method to mapping the index of convolution layer \
     #                         from ckpt to model. (default: %(default)s)')
     # choices= ['CIFAR10', 'Intel', 'PetImages']
-    parser.add_argument('--data-name', type=str, default="CIFAR10", 
+    parser.add_argument('--data-name', type=str, default="CIFAR10",
                         help='The name of dataset (default: %(default)s)')
-    parser.add_argument('--data-root', type=str, default="./data", 
+    parser.add_argument('--data-root', type=str, default="./data",
                         help='Folder where the dataset is saved (default: %(default)s)')
-    parser.add_argument('--batch-size', type=int, default=128, 
+    parser.add_argument('--batch-size', type=int, default=128,
                         help='Mini-batch size for each iteration when training model (default: %(default)s)')
-    parser.add_argument('--workers', type=int, default=2, 
+    parser.add_argument('--workers', type=int, default=2,
                         help='The number of worker for dataloader (default: %(default)s)')
-    parser.add_argument('--epochs', type=int, default=200, 
+    parser.add_argument('--epochs', type=int, default=200,
                         help='The number of epochs in training (default: %(default)s)')
-    parser.add_argument('--lr', type=float, default=1e-4, 
+    parser.add_argument('--lr', type=float, default=1e-4,
                         help='Learning rate for optimizer (default: %(default)s)')
-    parser.add_argument('--weight-decay', type=float, default=5e-4, 
+    parser.add_argument('--weight-decay', type=float, default=5e-4,
                         help='Weight decay for optimizer (default: %(default)s)')
-    parser.add_argument('--lr-scheduler', action='store_true', 
+    parser.add_argument('--lr-scheduler', action='store_true',
                         help='Learning rate scheduler during training. Default: MultiStepLR')
-    parser.add_argument('--lr-step', nargs='+', type=float,  
+    parser.add_argument('--lr-step', nargs='+', type=float,
                         help='Lmilestones for learning rate scheduler (defaut: [0.7, 0.9])')
-    parser.add_argument('--show-summary', action='store_true', 
+    parser.add_argument('--show-summary', action='store_true',
                         help='Show model summary with default input size (3, 224, 224)')
-    parser.add_argument('--name', default='exp', 
+    parser.add_argument('--name', default='exp',
                         help='Project name will saved at runs/train/__name__')
-    parser.add_argument('--save_ckpt', action='store_true' , 
+    parser.add_argument('--save_ckpt', action='store_true',
                         help='Save model into checkpoint folder')
-    parser.add_argument('--log-result', action='store_true' , 
+    parser.add_argument('--log-result', action='store_true',
                         help='Save result of training progress into checkpoint folder')
-    parser.add_argument('--wandb-log', action='store_true' , 
+    parser.add_argument('--wandb-log', action='store_true',
                         help='Log result into WanDB')
     parser.add_argument('--wandb-name', type=str, default="wandb_log",
-                         help='Log name in WanDB')
+                        help='Log name in WanDB')
     opt = parser.parse_args()
 
     try:
@@ -279,20 +280,20 @@ if __name__ == '__main__':
 
     print(f"\n*** RUN ON SEED {opt.seed} ***")
 
-    opt.num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
+    num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
     train_loader, val_loader = get_train_valid_loader(
         dataset_name=opt.data_name,
         data_dir=opt.data_root,
-        batch_size = opt.batch_size,
-        augment = True,
-        random_seed = opt.seed,
-        num_workers = opt.workers
+        batch_size=opt.batch_size,
+        augment=True,
+        random_seed=opt.seed,
+        num_workers=opt.workers
     )
     test_loader = get_test_loader(
         dataset_name=opt.data_name,
         data_dir=opt.data_root,
-        batch_size = opt.batch_size,
-        num_workers = opt.workers
+        batch_size=opt.batch_size,
+        num_workers=opt.workers
     )
     dataloaders = {
         "train": train_loader,
@@ -302,10 +303,13 @@ if __name__ == '__main__':
     steps_per_epoch = len(dataloaders['train'])
 
     # Define the model before training
-    source_model = torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
-    targer_model = torchvision.models.resnet18()
+    source_model = torchvision.models.vgg16(
+        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
 
-    transfer_config = {
+    targer_model = torchvision.models.resnet18(weights=None)
+    targer_model.fc = nn.Linear(512, num_classes, bias=True)
+
+    var_transfer_config = {
         "type_pad": opt.type_pad,
         "type_pool": opt.type_pool,
         "choice_method": {
@@ -314,35 +318,42 @@ if __name__ == '__main__':
         }
     }
     transfer_tool = TLV(
-        standardization = FlattenStandardization(),
-        matching=DPFMatching(),
-        transfer=VarTransfer(**transfer_config)
+        standardization=BlocksStandardization(),
+        matching=DPMatching(),
+        transfer=VarTransfer(**var_transfer_config),
+        score='ShapeScore'
     )
+
+    # transfer_tool = IAT()
+    # transfer_tool = IAT(standardization='blocks',
+    #                     matching='dp',
+    #                     score='autoencoder',
+    #                     transfer='trace')
+
     transfer_tool(
         from_module=source_model,
         to_module=targer_model
     )
 
     # Finish define model
-
-    optimizer = torch.optim.AdamW(targer_model.parameters(), 
-                                  lr = opt.lr, 
+    optimizer = torch.optim.AdamW(targer_model.parameters(),
+                                  lr=opt.lr,
                                   weight_decay=opt.weight_decay)
     total_step = steps_per_epoch * opt.epochs
     if opt.lr_step is not None:
-        milestones = [int(opt.lr_step[i] * total_step) for i in range(len(opt.lr_step))]
+        milestones = [int(opt.lr_step[i] * total_step)
+                      for i in range(len(opt.lr_step))]
     else:  # use default
         milestones = [int(0.6 * total_step), int(0.8 * total_step)]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
-    best_model, val_acc = train_model(model = targer_model, 
-                                dataloaders = dataloaders, 
-                                optimizer = optimizer, 
-                                opt = opt, 
-                                wandb = wandb, 
-                                lr_scheduler=lr_scheduler)
+    best_model, val_acc = train_model(model=targer_model,
+                                      dataloaders=dataloaders,
+                                      optimizer=optimizer,
+                                      opt=opt,
+                                      wandb=wandb,
+                                      lr_scheduler=lr_scheduler)
     test_acc = test_model(best_model, dataloaders["test"], opt.device)
     print("Validation accuracy: ", round(val_acc, 6))
     print("Test accuracy: ", round(test_acc, 6))
     if opt.wandb_log:
         wandb.finish()
-
