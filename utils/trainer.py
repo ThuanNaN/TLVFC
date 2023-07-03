@@ -12,7 +12,6 @@ from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result
 from models.vgg import vgg_get_model
 from models.resnet import resnet_get_model
 from models.utils import GetPretrain_RESNET, GetPretrain_VGG, apply_new_feature
-from converter.Converter import Converter
 from torchsummary import summary
 
 

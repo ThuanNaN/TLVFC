@@ -1,23 +1,183 @@
 import os
-import wandb
+import copy
+import time
+import logging
 import argparse
-from utils.trainer import train_model, test_model
-from utils.general import seed_everything, AppPath
-from dataset_loader.dataset import get_train_valid_loader, get_test_loader
 import yaml
 from yaml.loader import SafeLoader
+from tqdm import tqdm
+import wandb
+import torch
+import torchvision
+import torch.nn as nn
+from torchsummary import summary
+from torch.optim.lr_scheduler import MultiStepLR
+from utils.trainer import train_model, test_model
+from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result, seed_everything
+from dataset_loader.dataset import get_train_valid_loader, get_test_loader
+
+from toolkit import TLV
+from toolkit.standardization import FlattenStandardization
+from toolkit.matching import DPFMatching
+from toolkit.transfer import VarTransfer
 
 seed_everything(2)
 
-# def train_model():
-#     pass
+logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(format="%(message)s", level=logging.INFO)
+LOGGER = logging.getLogger("Torch-Cls")
 
 
-# def validation_model():
-#     pass
+def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
+    since = time.perf_counter()
+    num_epochs, device = opt.epochs, opt.device
 
-# def test_model():
-#     pass
+    LOGGER.info(f"\n{colorstr('Hyperparameter:')} {opt}")
+    LOGGER.info(f"\n{colorstr('Device:')} {device}")
+    LOGGER.info(f"\n{colorstr('Optimizer:')} {optimizer}")
+
+    if opt.log_result:
+        DIR_SAVE = AppPath.RUN_TRAIN_DIR / \
+            "{}/run_seed_{}".format(opt.name, opt.seed)
+        os.makedirs(DIR_SAVE)
+        save_opt = os.path.join(DIR_SAVE, "opt.yaml")
+        with open(save_opt, 'w') as f:
+            yaml.dump(opt.__dict__, f, sort_keys=False)
+
+    if opt.lr_scheduler:
+        LOGGER.info(
+            f"\n{colorstr('LR Scheduler:')} {type(lr_scheduler).__name__}")
+    else:
+        lr_scheduler = None
+
+    if opt.show_summary:
+        summary(model, (3, 224, 224))
+    if torch.cuda.device_count() > 1:
+        model = nn.DataParallel(model, device_ids=list(
+            range(torch.cuda.device_count())))
+
+    criterion = torch.nn.CrossEntropyLoss()
+    LOGGER.info(f"\n{colorstr('Loss:')} {type(criterion).__name__}")
+
+    history = {"train_loss": [], "train_acc": [],
+               "val_loss": [], "val_acc": [], "lr": []}
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_model_optim = copy.deepcopy(optimizer.state_dict())
+    best_val_acc = 0.0
+
+    model.to(device)
+    for epoch in range(num_epochs):
+        LOGGER.info(colorstr(f'\nEpoch {epoch}/{num_epochs-1}:'))
+
+        for phase in ["train", "val"]:
+            if phase == "train":
+                LOGGER.info(colorstr('bright_yellow', 'bold', '\n%20s' + '%15s' * 3) %
+                            ('Training:', 'gpu_mem', 'loss', 'acc'))
+                model.train()
+            else:
+                LOGGER.info(colorstr('bright_yellow', 'bold', '\n%20s' + '%15s' * 3) %
+                            ('Validation:', 'gpu_mem', 'loss', 'acc'))
+                model.eval()
+
+            running_items = 0
+            running_loss = 0.0
+            running_corrects = 0
+
+            _phase = tqdm(dataloaders[phase],
+                          total=len(dataloaders[phase]),
+                          bar_format='{desc} {percentage:>7.0f}%|{bar:10}{r_bar}{bar:-10b}',
+                          unit='batch')
+
+            for inputs, labels in _phase:
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+
+                optimizer.zero_grad()
+                with torch.set_grad_enabled(phase == "train"):
+                    outputs = model(inputs)
+                    loss = criterion(outputs, labels)
+                    _, preds = torch.max(outputs, 1)
+
+                    if phase == 'train':
+                        loss.backward()
+                        optimizer.step()
+
+                        history['lr'].append(lr_scheduler.optimizer.param_groups[0]
+                                             ["lr"]) if lr_scheduler else history['lr'].append(opt.lr)
+
+                running_items += inputs.size(0)
+                running_loss += loss.item() * inputs.size(0)
+                running_corrects += torch.sum(preds == labels.data)
+
+                epoch_loss = running_loss / running_items
+                epoch_acc = running_corrects / running_items
+
+                mem = f'{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}GB'
+                desc = ('%35s' + '%15.6g' * 2) % (mem, running_loss /
+                                                  running_items, running_corrects / running_items)
+                _phase.set_description_str(desc)
+
+            if phase == 'train':
+                if opt.wandb_log:
+                    wandb.log({"train_acc": epoch_acc,
+                              "train_loss": epoch_loss})
+                    if lr_scheduler:
+                        wandb.log(
+                            {"lr": lr_scheduler.optimizer.param_groups[0]["lr"]})
+                    else:
+                        wandb.log({"lr": opt.lr})
+                history["train_loss"].append(epoch_loss)
+                history["train_acc"].append(epoch_acc.item())
+            else:
+                if opt.wandb_log:
+                    wandb.log({"val_acc": epoch_acc, "val_loss": epoch_loss})
+                history["val_loss"].append(epoch_loss)
+                history["val_acc"].append(epoch_acc.item())
+                if epoch_acc > best_val_acc:
+                    best_val_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    best_model_optim = copy.deepcopy(optimizer.state_dict())
+                    if opt.save_ckpt:
+                        save_ckpt_(model, DIR_SAVE, "best.pt")
+
+    time_elapsed = time.perf_counter() - since
+    print('Training complete in {:.0f}h {:.0f}m {:.0f}s with {} epochs'.format(
+        time_elapsed // 3600, time_elapsed % 3600 // 60, time_elapsed % 60, num_epochs))
+    print('Best val Acc: {:4f}'.format(best_val_acc))
+    if opt.save_ckpt:
+        save_ckpt_(model, DIR_SAVE, "last.pt")
+
+    model.load_state_dict(best_model_wts)
+    optimizer.load_state_dict(best_model_optim)
+
+    if opt.log_result:
+        plot_and_log_result(DIR_SAVE, history)
+    if opt.save_ckpt:
+        print("Best model weight saved at {}/weights/best.pt".format(DIR_SAVE))
+        print("Last model weight saved at {}/weights/last.pt".format(DIR_SAVE))
+
+    return model, best_val_acc.item()
+
+
+
+def test_model(model, test_loader, device):
+    model.to(device)
+    model.eval()
+    totals = 0
+    corrects = 0
+    with torch.no_grad():
+        for inputs, labels in test_loader:
+            inputs = inputs.to(device)
+            labels = labels.to(device)
+
+            outputs = model(inputs)
+            _, preds = torch.max(outputs, 1)
+
+            totals += inputs.size(0)
+            corrects += torch.sum(preds == labels.data)
+
+    acc = corrects / totals
+    return acc.item()
 
 
 
@@ -39,11 +199,8 @@ if __name__ == '__main__':
     # choice = ["vgg16", "vgg19", "resnet18", "resnet34"]
     parser.add_argument('--pretrain-name', type=str, default='vgg16',
                         help='The weight name of pretrain model (default: %(default)s)')
-    parser.add_argument('--base-init', type=str, default="He", required=True,
+    parser.add_argument('--base-init', type=str, default="He",
                         help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
-    parser.add_argument('--transfer-weight', action='store_true', 
-                        help='Using weight transfer method from pre-trained. \
-                            If not, using method in flag --base-init for all parameters')
     # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
     parser.add_argument('--keep', default='interLeaved', type=str, 
                         help='Method to choose for down weight when using --transfer-weight flag')
@@ -57,42 +214,34 @@ if __name__ == '__main__':
     # choices= ['avg', 'max']
     parser.add_argument('--type-pool', type=str, default="avg", 
                         help='down size kernel. Using when down size of kernel. (default: %(default)s)')
-    parser.add_argument('--num-candidate', type=int, default=3, 
-                        help='The number of cadidate nearest to matching weight (default: %(default)s)')
+    # parser.add_argument('--num-candidate', type=int, default=3, 
+    #                     help='The number of cadidate nearest to matching weight (default: %(default)s)')
     # choices= ['max', 'min']
-    parser.add_argument('--cand-select-method', type=str, default="max",
-                        help='The procedure for selecting a candidate list (default: %(default)s)')
+    # parser.add_argument('--cand-select-method', type=str, default="max",
+    #                     help='The procedure for selecting a candidate list (default: %(default)s)')
     # choices= ['relative', 'absolute']
-    parser.add_argument('--mapping-type', type=str, default="relative",
-                        help='Method to mapping the index of convolution layer \
-                            from ckpt to model. (default: %(default)s)')
+    # parser.add_argument('--mapping-type', type=str, default="relative",
+    #                     help='Method to mapping the index of convolution layer \
+    #                         from ckpt to model. (default: %(default)s)')
     # choices= ['CIFAR10', 'Intel', 'PetImages']
     parser.add_argument('--data-name', type=str, default="CIFAR10", 
                         help='The name of dataset (default: %(default)s)')
     parser.add_argument('--data-root', type=str, default="./data", 
                         help='Folder where the dataset is saved (default: %(default)s)')
-    parser.add_argument('--batch-size', type=int, default=256, 
+    parser.add_argument('--batch-size', type=int, default=128, 
                         help='Mini-batch size for each iteration when training model (default: %(default)s)')
     parser.add_argument('--workers', type=int, default=2, 
                         help='The number of worker for dataloader (default: %(default)s)')
-    parser.add_argument('--epochs', type=int, default=50, 
+    parser.add_argument('--epochs', type=int, default=200, 
                         help='The number of epochs in training (default: %(default)s)')
-    parser.add_argument('--adam', action='store_true', 
-                        help='Use Adam optimier. If not, using SGD is a optimizer')
-    parser.add_argument('--adamW', action='store_true', 
-                        help='Use AdamW optimier. If not, using SGD is a optimizer')
     parser.add_argument('--lr', type=float, default=1e-4, 
                         help='Learning rate for optimizer (default: %(default)s)')
-    parser.add_argument('--weight-decay', type=float, default=2e-8, 
+    parser.add_argument('--weight-decay', type=float, default=5e-4, 
                         help='Weight decay for optimizer (default: %(default)s)')
     parser.add_argument('--lr-scheduler', action='store_true', 
                         help='Learning rate scheduler during training. Default: MultiStepLR')
     parser.add_argument('--lr-step', nargs='+', type=float,  
                         help='Lmilestones for learning rate scheduler (defaut: [0.7, 0.9])')
-    parser.add_argument('--warm-up', action='store_true', 
-                        help='Scheduler warmup with learning rate in start training')
-    parser.add_argument('--num-warm-up', type=int, default=10, 
-                        help='The number of epochs for warmup scheduler')
     parser.add_argument('--show-summary', action='store_true', 
                         help='Show model summary with default input size (3, 224, 224)')
     parser.add_argument('--name', default='exp', 
@@ -105,9 +254,7 @@ if __name__ == '__main__':
                         help='Log result into WanDB')
     parser.add_argument('--wandb-name', type=str, default="wandb_log",
                          help='Log name in WanDB')
-
     opt = parser.parse_args()
-
 
     try:
         device_name = os.getlogin()
@@ -119,8 +266,7 @@ if __name__ == '__main__':
             project=opt.wandb_name,
             group=opt.model_name, job_type="train", name=opt.name,
             tags=[device_name],
-            config=vars(opt)
-        )
+            config=vars(opt))
     else:
         wandb = None
 
@@ -131,51 +277,72 @@ if __name__ == '__main__':
     with open('./config/dataset.yaml') as f:
         dataset_config = yaml.load(f, Loader=SafeLoader)
 
+    print(f"\n*** RUN ON SEED {opt.seed} ***")
 
-    lst_val_acc = []
-    lst_test_acc = []
-    for i in range(opt.num_try):
-        print(f"\n*** RUN ON SEED {opt.seed} ***")
+    opt.num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
+    train_loader, val_loader = get_train_valid_loader(
+        dataset_name=opt.data_name,
+        data_dir=opt.data_root,
+        batch_size = opt.batch_size,
+        augment = True,
+        random_seed = opt.seed,
+        num_workers = opt.workers
+    )
+    test_loader = get_test_loader(
+        dataset_name=opt.data_name,
+        data_dir=opt.data_root,
+        batch_size = opt.batch_size,
+        num_workers = opt.workers
+    )
+    dataloaders = {
+        "train": train_loader,
+        "val": val_loader,
+        "test": test_loader,
+    }
+    steps_per_epoch = len(dataloaders['train'])
 
-        opt.num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
-        train_loader, val_loader = get_train_valid_loader(
-            dataset_name=opt.data_name,
-            data_dir=opt.data_root,
-            batch_size = opt.batch_size,
-            augment = True,
-            random_seed = opt.seed,
-            num_workers = opt.workers
-        )
+    # Define the model before training
+    source_model = torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
+    targer_model = torchvision.models.resnet18()
 
-        test_loader = get_test_loader(
-            dataset_name=opt.data_name,
-            data_dir=opt.data_root,
-            batch_size = opt.batch_size,
-            num_workers = opt.workers
-        )
-
-        dataloaders = {
-            "train": train_loader,
-            "val": val_loader,
-            "test": test_loader,
+    transfer_config = {
+        "type_pad": opt.type_pad,
+        "type_pool": opt.type_pool,
+        "choice_method": {
+            "keep": opt.keep,
+            "remove": opt.remove
         }
+    }
+    transfer_tool = TLV(
+        standardization = FlattenStandardization(),
+        matching=DPFMatching(),
+        transfer=VarTransfer(**transfer_config)
+    )
+    transfer_tool(
+        from_module=source_model,
+        to_module=targer_model
+    )
 
-        model, val_acc = train_model(opt = opt, dataloaders = dataloaders, wandb = wandb)
+    # Finish define model
 
-        test_acc = test_model(model, dataloaders["test"], opt.device)
-        lst_val_acc.append(val_acc)
-        lst_test_acc.append(test_acc)
-
-        opt.seed += 1
-
-    print("Mean_val_acc: ", round(sum(lst_val_acc) / len(lst_val_acc), 6))
-    print("Mean_test_acc: ", round(sum(lst_test_acc) / len(lst_test_acc), 6))
-
+    optimizer = torch.optim.AdamW(targer_model.parameters(), 
+                                  lr = opt.lr, 
+                                  weight_decay=opt.weight_decay)
+    total_step = steps_per_epoch * opt.epochs
+    if opt.lr_step is not None:
+        milestones = [int(opt.lr_step[i] * total_step) for i in range(len(opt.lr_step))]
+    else:  # use default
+        milestones = [int(0.6 * total_step), int(0.8 * total_step)]
+    lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
+    best_model, val_acc = train_model(model = targer_model, 
+                                dataloaders = dataloaders, 
+                                optimizer = optimizer, 
+                                opt = opt, 
+                                wandb = wandb, 
+                                lr_scheduler=lr_scheduler)
+    test_acc = test_model(best_model, dataloaders["test"], opt.device)
+    print("Validation accuracy: ", round(val_acc, 6))
+    print("Test accuracy: ", round(test_acc, 6))
     if opt.wandb_log:
         wandb.finish()
-
-
-    
-
-
 
