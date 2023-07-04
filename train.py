@@ -279,8 +279,51 @@ if __name__ == '__main__':
         dataset_config = yaml.load(f, Loader=SafeLoader)
 
     print(f"\n*** RUN ON SEED {opt.seed} ***")
-
     num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
+
+    # Define the model before training
+    source_model = torchvision.models.vgg16(
+        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
+
+    targer_model = torchvision.models.resnet18(weights=None)
+    targer_model.fc = nn.Linear(512, num_classes, bias=True)
+
+    var_transfer_config = {
+        "type_pad": opt.type_pad,
+        "type_pool": opt.type_pool,
+        "choice_method": {
+            "keep": opt.keep,
+            "remove": opt.remove
+        }
+    }
+
+    #val: 0.7846
+    #test: 0.7739
+    # transfer_tool = TLV(
+    #     standardization=BlocksStandardization(),
+    #     matching=DPMatching(),
+    #     transfer=VarTransfer(**var_transfer_config),
+    #     score='ShapeScore'
+    # )  
+    
+    #CIFAR10
+    #val: 0.7781
+    #test: 0.7699
+    #Default = Best
+    transfer_tool = IAT(standardization='blocks',
+                        score='ShapeScore',
+                        matching='dp',
+                        transfer='clip')
+
+
+    transfer_tool(
+        from_module=source_model,
+        to_module=targer_model
+    )
+
+    # Finish define model
+
+
     train_loader, val_loader = get_train_valid_loader(
         dataset_name=opt.data_name,
         data_dir=opt.data_root,
@@ -302,40 +345,6 @@ if __name__ == '__main__':
     }
     steps_per_epoch = len(dataloaders['train'])
 
-    # Define the model before training
-    source_model = torchvision.models.vgg16(
-        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
-
-    targer_model = torchvision.models.resnet18(weights=None)
-    targer_model.fc = nn.Linear(512, num_classes, bias=True)
-
-    var_transfer_config = {
-        "type_pad": opt.type_pad,
-        "type_pool": opt.type_pool,
-        "choice_method": {
-            "keep": opt.keep,
-            "remove": opt.remove
-        }
-    }
-    transfer_tool = TLV(
-        standardization=BlocksStandardization(),
-        matching=DPMatching(),
-        transfer=VarTransfer(**var_transfer_config),
-        score='ShapeScore'
-    )
-
-    # transfer_tool = IAT()
-    # transfer_tool = IAT(standardization='blocks',
-    #                     matching='dp',
-    #                     score='autoencoder',
-    #                     transfer='trace')
-
-    transfer_tool(
-        from_module=source_model,
-        to_module=targer_model
-    )
-
-    # Finish define model
     optimizer = torch.optim.AdamW(targer_model.parameters(),
                                   lr=opt.lr,
                                   weight_decay=opt.weight_decay)
