@@ -28,6 +28,7 @@ class TLV:
         self.score.precompute_scores(from_module, to_module)
         self.matching.set_score(self.score)
         matched_tensors = self.matching(from_paths, to_paths, context=context)
+
         self.transfer(matched_tensors, context=context)
 
         all_from = len(flat_module_from)
