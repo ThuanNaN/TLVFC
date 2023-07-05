@@ -13,6 +13,8 @@ class VarTransfer(Transfer):
         self.var_transfer_kwargs = kwargs
 
     def transfer_layer(self, tensor_from: torch.Tensor, tensor_to: torch.Tensor, *args, **kwargs) -> None:
+        if tensor_from is None or tensor_to is None:
+            return
         #Transfer convolution
         if len(tensor_from.size()) == 4:
             self.transfer_conv(tensor_from, tensor_to, **kwargs)

@@ -19,6 +19,7 @@ from dataset_loader.dataset import get_train_valid_loader, get_test_loader
 from toolkit import TLV
 from toolkit.standardization import FlattenStandardization, BlocksStandardization
 from toolkit.matching import DPFMatching, DPMatching
+from toolkit.score.shape_score import ShapeScore
 from toolkit.transfer import VarTransfer
 
 from iatransfer.toolkit import IAT
@@ -107,6 +108,9 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
 
                         history['lr'].append(lr_scheduler.optimizer.param_groups[0]
                                              ["lr"]) if lr_scheduler else history['lr'].append(opt.lr)
+
+                        if lr_scheduler is not None:
+                            lr_scheduler.step()
 
                 running_items += inputs.size(0)
                 running_loss += loss.item() * inputs.size(0)
@@ -282,11 +286,20 @@ if __name__ == '__main__':
     num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
 
     # Define the model before training
-    source_model = torchvision.models.vgg16(
-        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
+    source_model = torchvision.models.resnet18(
+        weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1)
+    
 
-    targer_model = torchvision.models.resnet18(weights=None)
-    targer_model.fc = nn.Linear(512, num_classes, bias=True)
+    # source_model = torchvision.models.vgg16(
+    #     weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
+
+    #VGG16
+    targer_model = torchvision.models.vgg16(weights=None)
+    targer_model.classifier[-1] = nn.Linear(4096, num_classes, bias=True)
+    
+    # targer_model = torchvision.models.resnet34(weights=None)
+    # targer_model.fc = nn.Linear(512, num_classes, bias=True)
+    
 
     var_transfer_config = {
         "type_pad": opt.type_pad,
@@ -299,21 +312,22 @@ if __name__ == '__main__':
 
     #val: 0.7846
     #test: 0.7739
-    # transfer_tool = TLV(
-    #     standardization=BlocksStandardization(),
-    #     matching=DPMatching(),
-    #     transfer=VarTransfer(**var_transfer_config),
-    #     score='ShapeScore'
-    # )  
+    transfer_tool = TLV(
+        standardization=BlocksStandardization(),
+        score=ShapeScore(),
+        matching=DPMatching(),
+        transfer=VarTransfer(**var_transfer_config)
+    )  
+    
     
     #CIFAR10
     #val: 0.7781
     #test: 0.7699
     #Default = Best
-    transfer_tool = IAT(standardization='blocks',
-                        score='ShapeScore',
-                        matching='dp',
-                        transfer='clip')
+    # transfer_tool = IAT(standardization='blocks',
+    #                     score='ShapeScore',
+    #                     matching='dp',
+    #                     transfer='clip')
 
 
     transfer_tool(
