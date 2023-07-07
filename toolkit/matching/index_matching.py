@@ -22,8 +22,16 @@ class IndexMatching(Matching):
         from_features, from_bn, from_fc = IndexMatching.classify_module(from_module)
         to_features, to_bn, to_fc = IndexMatching.classify_module(to_module)
 
-        feature_match, feature_match_ind = self._index_match(from_features, to_features)
-        fc_match, fc_match_ind = self._index_match(from_fc, to_fc, invert=True)
+        if len(from_features) != 0 and len(to_features) != 0:
+            feature_match, feature_match_ind = self._index_match(from_features, to_features)
+        else:
+            feature_match, feature_match_ind = [], []
+            
+        if len(from_fc) != 0 and len(to_fc) != 0:
+            fc_match, fc_match_ind = self._index_match(from_fc, to_fc, invert=True)
+        else:
+            fc_match, fc_match_ind = [], []
+
         if len(from_bn) != 0 and len(to_bn) != 0:
             bn_match, bn_match_ind = self._index_match(from_bn, to_bn)
         else:
