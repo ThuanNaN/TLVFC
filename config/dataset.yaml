@@ -11,6 +11,13 @@ dataset_config:
     image_size: 32
     num_classes: 10
 
+  CIFAR100: 
+    mean: [0.5070, 0.4868, 0.4414] #no aug
+    std:  [0.2675, 0.2564, 0.2760] #no aug
+    image_size: 32
+    num_classes: 100
+
+
   PetImages: 
     mean: [0.4889, 0.4559, 0.4176] #no aug
     std: [0.2596, 0.2530, 0.2557] #no aug

@@ -30,7 +30,6 @@ def get_train_valid_loader(dataset_name,
                            shuffle=True, 
                            num_workers = 1, 
                            pin_memory=False):
-    
     error_msg = "[!] valid_size should be in the range [0, 1]."
     assert ((valid_size >= 0) and (valid_size <= 1)), error_msg
 
@@ -66,16 +65,27 @@ def get_train_valid_loader(dataset_name,
         normalize,
     ])
 
-    if dataset_name == "CIFAR10":
-        train_dataset = datasets.CIFAR10(
-            root=data_dir, train=True,
-            download=True, transform=train_transform,
-        )
+    if dataset_name == "CIFAR10" or dataset_name == "CIFAR100":
+        if dataset_name == "CIFAR10":
+            train_dataset = datasets.CIFAR10(
+                root=data_dir, train=True,
+                download=True, transform=train_transform,
+            )
 
-        valid_dataset = datasets.CIFAR10(
-            root=data_dir, train=True,
-            download=True, transform=valid_transform,
-        )
+            valid_dataset = datasets.CIFAR10(
+                root=data_dir, train=True,
+                download=True, transform=valid_transform,
+            )
+        else:
+            train_dataset = datasets.CIFAR100(
+                root=data_dir, train=True,
+                download=True, transform=train_transform,
+            )
+
+            valid_dataset = datasets.CIFAR100(
+                root=data_dir, train=True,
+                download=True, transform=valid_transform,
+            )
 
         train_sampler, val_sampler, _ = split_dataset(
             train_dataset, shuffle_dataset=shuffle, random_seed=random_seed, validation_split=0.2, test_set=False)
@@ -137,11 +147,17 @@ def get_test_loader(
         normalize,
     ])
 
-    if dataset_name == "CIFAR10":
-        dataset = datasets.CIFAR10(
-            root=data_dir, train=False,
-            download=True, transform=transform,
-        )
+    if dataset_name == "CIFAR10" or dataset_name == "CIFAR100":
+        if dataset_name == "CIFAR10":
+            dataset = datasets.CIFAR10(
+                root=data_dir, train=False,
+                download=True, transform=transform,
+            )
+        else:
+            dataset = datasets.CIFAR100(
+                root=data_dir, train=False,
+                download=True, transform=transform,
+            )
 
         data_loader = DataLoader(
             dataset, batch_size=batch_size, shuffle=shuffle,
