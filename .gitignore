@@ -12,6 +12,7 @@ __pycache__/
 
 /data/Intel
 /data/CIFAR10
+/data/CIFAR100
 /data/PetImages
 
 
@@ -21,3 +22,4 @@ __pycache__/
 /wandb/
 /ckpt/
 test.py
+/nbs/
