@@ -66,9 +66,9 @@ class CustomVGG(nn.Module):
         return x
 
     @staticmethod
-    def _get_model_custom(model_name: str, num_classes: int, avgpool:int = 7, base_init: str="He"):
+    def _get_model_custom(model_base: str, num_classes: int, avgpool:int = 7, base_init: str="He"):
         # Origin vgg model
-        if model_name == "vgg16":
+        if model_base == "vgg16":
             model = CustomVGG(
                 features=make_layers(cfgs["D"], batch_norm=False,
                                     k_size=3, pad="same"),
@@ -80,7 +80,7 @@ class CustomVGG(nn.Module):
                 avgpool=avgpool
             )
 
-        elif model_name == "vgg19":
+        elif model_base == "vgg19":
             model = CustomVGG(
                 features=make_layers(cfgs["E"], batch_norm=False,
                                     k_size=3, pad="same"),
@@ -93,7 +93,7 @@ class CustomVGG(nn.Module):
             )
 
         #-------------
-        elif model_name == "vgg16_5x5_init":
+        elif model_base == "vgg16_5x5_init":
             model = CustomVGG(
                 features=make_layers(cfgs["D"], batch_norm=False,
                                     k_size=5, pad="same"),
@@ -106,7 +106,7 @@ class CustomVGG(nn.Module):
             )
 
     # ----------------STAGE 2--------------------------------------------
-        elif model_name == "vgg16_5x5_Down":
+        elif model_base == "vgg16_5x5_Down":
             model = CustomVGG(
                 features=make_layers(cfgs["D-Down"], batch_norm=False,
                                     k_size=5, pad="same"),
@@ -118,7 +118,7 @@ class CustomVGG(nn.Module):
                 avgpool=avgpool
             )
 
-        elif model_name == "vgg16_5x5_Up":
+        elif model_base == "vgg16_5x5_Up":
             model = CustomVGG(
                 features=make_layers(cfgs["D-Up"], batch_norm=False,
                                     k_size=5, pad="same"),
@@ -130,7 +130,7 @@ class CustomVGG(nn.Module):
                 avgpool=avgpool
             )
 
-        elif model_name == "vgg16_5x5_DownUp":
+        elif model_base == "vgg16_5x5_DownUp":
             model = CustomVGG(
                 features=make_layers(cfgs["D-DownUp"], batch_norm=False,
                                     k_size=5, pad="same"),
@@ -142,7 +142,7 @@ class CustomVGG(nn.Module):
                 avgpool=avgpool
             )
 
-        elif model_name == "vgg16_5x5_Sort":
+        elif model_base == "vgg16_5x5_Sort":
             model = CustomVGG(
                 features=make_layers(cfgs["D-Sort"], batch_norm=False,
                                     k_size=5, pad="same"),
@@ -154,7 +154,7 @@ class CustomVGG(nn.Module):
                 avgpool=avgpool
             )
 
-        elif model_name == "vgg16_5x5_Long":
+        elif model_base == "vgg16_5x5_Long":
             model = CustomVGG(
                 features=make_layers(cfgs["D-Long"], batch_norm=False,
                                     k_size=5, pad="same"),
