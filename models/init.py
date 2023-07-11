@@ -1,9 +1,4 @@
 import math
-import warnings
-from torch import Tensor
-import torch
-
-
 
 def _calculate_correct_fan(tensor_size, mode):
     num_input_fmaps = tensor_size[1]
