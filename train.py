@@ -29,7 +29,7 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOGGER = logging.getLogger("Torch-Cls")
 
 
-def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
+def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     since = time.perf_counter()
     num_epochs, device = opt.epochs, opt.device
     LOGGER.info(f"\n{colorstr('Hyperparameter:')} {opt}")
@@ -63,12 +63,7 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     best_val_acc = 0.0
 
     model.to(device)
-
-    suport_model = vgg_get_model(model_name="vgg16", num_classes=100, avgpool=1)
-    suport_model.classifier = torch.nn.Identity()
-    suport_model.eval()
-    suport_model.to(device)
-
+    support_model.to(device)
     for epoch in range(num_epochs):
         LOGGER.info(colorstr(f'\nEpoch {epoch}/{num_epochs-1}:'))
         for phase in ["train", "val"]:
@@ -92,7 +87,7 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
-                x_pretrain = suport_model(inputs)
+                x_pretrain = support_model(inputs)
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
@@ -273,8 +268,7 @@ if __name__ == '__main__':
 
 
     #Target mdoel
-    targer_model = CustomResnet._get_model_custom(model_base='resnet18', 
-                                                  num_classes=num_classes)
+    targer_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=num_classes)
 
     group_filter = [nn.Conv2d, nn.Linear]
     var_transfer_config = {
@@ -329,7 +323,18 @@ if __name__ == '__main__':
     else:  # use default
         milestones = [int(0.6 * total_step), int(0.8 * total_step)]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
+
+    #Define support model to extract feature only
+    support_model = CustomVGG._get_model_custom(model_base="vgg16", num_classes=num_classes, avgpool=1)
+    support_model.classifier = torch.nn.Identity()
+    support_model.eval()
+
+    if torch.cuda.device_count() > 1:
+        targer_model = nn.DataParallel(targer_model, 
+                                       device_ids=list(range(torch.cuda.device_count())))
+
     best_model, val_acc = train_model(model=targer_model,
+                                      support_model=support_model,
                                       dataloaders=dataloaders,
                                       optimizer=optimizer,
                                       opt=opt,
