@@ -233,7 +233,7 @@ if __name__ == '__main__':
         wandb.login(key=os.getenv("WANDB_API_KEY"))
         wandb.init(
             project=opt.wandb_name,
-            group=opt.model_name, job_type="train", name=opt.name,
+            name=opt.name,
             tags=[device_name],
             config=vars(opt))
     else:
