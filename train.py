@@ -177,18 +177,6 @@ if __name__ == '__main__':
                         help='cuda device or cpu (default: %(default)s)')
     parser.add_argument('--seed', type=int, default=2,
                         help='random seed will start at seed = 2 (default: %(default)s)')
-    # choices= ['vgg', 'resnet']
-    parser.add_argument('--model-group', type=str, default='resnet',
-                        help='The group of model (default: %(default)s)')
-    # choices= ['vgg16_5x5_Down', 'vgg16_5x5_Up', 'vgg16_5x5_DownUp', 'vgg16_5x5_Sort', 'vgg16_5x5_Long', 'vgg16', 'vgg19', 'resnet18', 'resnet34']
-    parser.add_argument('--model-name', type=str, default='vgg16',
-                        help='The type of initialization model (default: %(default)s)')
-    # choices= ['vgg', 'resnet']
-    parser.add_argument('--pretrain-group', type=str, default='vgg',
-                        help='The group of pretrain weight (default: %(default)s)')
-    # choice = ["vgg16", "vgg19", "resnet18", "resnet34"]
-    parser.add_argument('--pretrain-name', type=str, default='vgg16',
-                        help='The weight name of pretrain model (default: %(default)s)')
     parser.add_argument('--base-init', type=str, default="He",
                         help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
     # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
