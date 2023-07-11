@@ -12,18 +12,15 @@ import torchvision
 import torch.nn as nn
 from torchsummary import summary
 from torch.optim.lr_scheduler import MultiStepLR
-from utils.trainer import train_model, test_model
 from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result, seed_everything
 from dataset_loader.dataset import get_train_valid_loader, get_test_loader
+from models import CustomResnet, CustomVGG
 
 from toolkit import TLV
 from toolkit.standardization import FlattenStandardization, BlocksStandardization
-from toolkit.matching import DPFMatching, DPMatching
+from toolkit.matching import DPFMatching, DPMatching, IndexMatching
 from toolkit.score.shape_score import ShapeScore
 from toolkit.transfer import VarTransfer
-
-from iatransfer.toolkit import IAT
-
 
 seed_everything(2)
 
@@ -35,11 +32,9 @@ LOGGER = logging.getLogger("Torch-Cls")
 def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     since = time.perf_counter()
     num_epochs, device = opt.epochs, opt.device
-
     LOGGER.info(f"\n{colorstr('Hyperparameter:')} {opt}")
     LOGGER.info(f"\n{colorstr('Device:')} {device}")
     LOGGER.info(f"\n{colorstr('Optimizer:')} {optimizer}")
-
     if opt.log_result:
         DIR_SAVE = AppPath.RUN_TRAIN_DIR / \
             "{}/run_seed_{}".format(opt.name, opt.seed)
@@ -47,13 +42,11 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
         save_opt = os.path.join(DIR_SAVE, "opt.yaml")
         with open(save_opt, 'w') as f:
             yaml.dump(opt.__dict__, f, sort_keys=False)
-
     if opt.lr_scheduler:
         LOGGER.info(
             f"\n{colorstr('LR Scheduler:')} {type(lr_scheduler).__name__}")
     else:
         lr_scheduler = None
-
     if opt.show_summary:
         summary(model, (3, 224, 224))
     if torch.cuda.device_count() > 1:
@@ -70,9 +63,14 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     best_val_acc = 0.0
 
     model.to(device)
+
+    suport_model = vgg_get_model(model_name="vgg16", num_classes=100, avgpool=1)
+    suport_model.classifier = torch.nn.Identity()
+    suport_model.eval()
+    suport_model.to(device)
+
     for epoch in range(num_epochs):
         LOGGER.info(colorstr(f'\nEpoch {epoch}/{num_epochs-1}:'))
-
         for phase in ["train", "val"]:
             if phase == "train":
                 LOGGER.info(colorstr('bright_yellow', 'bold', '\n%20s' + '%15s' * 3) %
@@ -82,11 +80,9 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
                 LOGGER.info(colorstr('bright_yellow', 'bold', '\n%20s' + '%15s' * 3) %
                             ('Validation:', 'gpu_mem', 'loss', 'acc'))
                 model.eval()
-
             running_items = 0
             running_loss = 0.0
             running_corrects = 0
-
             _phase = tqdm(dataloaders[phase],
                           total=len(dataloaders[phase]),
                           bar_format='{desc} {percentage:>7.0f}%|{bar:10}{r_bar}{bar:-10b}',
@@ -96,29 +92,25 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
+                x_pretrain = suport_model(inputs)
+
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
-                    outputs = model(inputs)
+                    outputs = model(inputs, phase, x_pretrain)
                     loss = criterion(outputs, labels)
                     _, preds = torch.max(outputs, 1)
-
                     if phase == 'train':
                         loss.backward()
                         optimizer.step()
-
                         history['lr'].append(lr_scheduler.optimizer.param_groups[0]
                                              ["lr"]) if lr_scheduler else history['lr'].append(opt.lr)
-
                         if lr_scheduler is not None:
                             lr_scheduler.step()
-
                 running_items += inputs.size(0)
                 running_loss += loss.item() * inputs.size(0)
                 running_corrects += torch.sum(preds == labels.data)
-
                 epoch_loss = running_loss / running_items
                 epoch_acc = running_corrects / running_items
-
                 mem = f'{torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0:.3g}GB'
                 desc = ('%35s' + '%15.6g' * 2) % (mem, running_loss /
                                                   running_items, running_corrects / running_items)
@@ -126,8 +118,7 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
 
             if phase == 'train':
                 if opt.wandb_log:
-                    wandb.log({"train_acc": epoch_acc,
-                              "train_loss": epoch_loss})
+                    wandb.log({"train_acc": epoch_acc, "train_loss": epoch_loss})
                     if lr_scheduler:
                         wandb.log(
                             {"lr": lr_scheduler.optimizer.param_groups[0]["lr"]})
@@ -153,7 +144,6 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     print('Best val Acc: {:4f}'.format(best_val_acc))
     if opt.save_ckpt:
         save_ckpt_(model, DIR_SAVE, "last.pt")
-
     model.load_state_dict(best_model_wts)
     optimizer.load_state_dict(best_model_optim)
 
@@ -219,15 +209,6 @@ if __name__ == '__main__':
     # choices= ['avg', 'max']
     parser.add_argument('--type-pool', type=str, default="avg",
                         help='down size kernel. Using when down size of kernel. (default: %(default)s)')
-    # parser.add_argument('--num-candidate', type=int, default=3,
-    #                     help='The number of cadidate nearest to matching weight (default: %(default)s)')
-    # choices= ['max', 'min']
-    # parser.add_argument('--cand-select-method', type=str, default="max",
-    #                     help='The procedure for selecting a candidate list (default: %(default)s)')
-    # choices= ['relative', 'absolute']
-    # parser.add_argument('--mapping-type', type=str, default="relative",
-    #                     help='Method to mapping the index of convolution layer \
-    #                         from ckpt to model. (default: %(default)s)')
     # choices= ['CIFAR10', 'Intel', 'PetImages']
     parser.add_argument('--data-name', type=str, default="CIFAR10",
                         help='The name of dataset (default: %(default)s)')
@@ -286,21 +267,16 @@ if __name__ == '__main__':
     num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
 
     # Define the model before training
-    source_model = torchvision.models.resnet18(
-        weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1)
-    
+    #Source model
+    source_model = torchvision.models.vgg16(
+        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
 
-    # source_model = torchvision.models.vgg16(
-    #     weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
 
-    #VGG16
-    targer_model = torchvision.models.vgg16(weights=None)
-    targer_model.classifier[-1] = nn.Linear(4096, num_classes, bias=True)
-    
-    # targer_model = torchvision.models.resnet34(weights=None)
-    # targer_model.fc = nn.Linear(512, num_classes, bias=True)
-    
+    #Target mdoel
+    targer_model = CustomResnet._get_model_custom(model_base='resnet18', 
+                                                  num_classes=num_classes)
 
+    group_filter = [nn.Conv2d, nn.Linear]
     var_transfer_config = {
         "type_pad": opt.type_pad,
         "type_pool": opt.type_pool,
@@ -310,33 +286,17 @@ if __name__ == '__main__':
         }
     }
 
-    #val: 0.7846
-    #test: 0.7739
     transfer_tool = TLV(
-        standardization=BlocksStandardization(),
-        score=ShapeScore(),
-        matching=DPMatching(),
+        standardization=FlattenStandardization(group_filter),
+        matching=IndexMatching(),
         transfer=VarTransfer(**var_transfer_config)
     )  
-    
-    
-    #CIFAR10
-    #val: 0.7781
-    #test: 0.7699
-    #Default = Best
-    # transfer_tool = IAT(standardization='blocks',
-    #                     score='ShapeScore',
-    #                     matching='dp',
-    #                     transfer='clip')
-
 
     transfer_tool(
         from_module=source_model,
         to_module=targer_model
     )
-
     # Finish define model
-
 
     train_loader, val_loader = get_train_valid_loader(
         dataset_name=opt.data_name,
