@@ -252,7 +252,7 @@ if __name__ == '__main__':
         weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
 
     #Target mdoel
-    targer_model = torchvision.models.resnet18(weights=None)
+    target_model = torchvision.models.resnet18(weights=None)
 
     group_filter = [nn.Conv2d, nn.Linear]
     var_transfer_config = {
@@ -272,7 +272,7 @@ if __name__ == '__main__':
 
     transfer_tool(
         from_module=source_model,
-        to_module=targer_model
+        to_module=target_model
     )
     # Finish define model
 
@@ -297,7 +297,7 @@ if __name__ == '__main__':
     }
     steps_per_epoch = len(dataloaders['train'])
 
-    optimizer = torch.optim.AdamW(targer_model.parameters(),
+    optimizer = torch.optim.AdamW(target_model.parameters(),
                                   lr=opt.lr,
                                   weight_decay=opt.weight_decay)
     total_step = steps_per_epoch * opt.epochs
@@ -309,10 +309,10 @@ if __name__ == '__main__':
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
 
     if torch.cuda.device_count() > 1:
-        targer_model = nn.DataParallel(targer_model, 
+        targer_model = nn.DataParallel(target_model, 
                                        device_ids=list(range(torch.cuda.device_count())))
 
-    best_model, val_acc = train_model(model=targer_model,
+    best_model, val_acc = train_model(model=target_model,
                                       dataloaders=dataloaders,
                                       optimizer=optimizer,
                                       opt=opt,

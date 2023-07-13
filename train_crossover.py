@@ -91,7 +91,7 @@ def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_sch
 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
-                    outputs = model(inputs, phase, x_pretrain)
+                    outputs = model(inputs, phase, x_pretrain, p=0.2)
                     loss = criterion(outputs, labels)
                     _, preds = torch.max(outputs, 1)
                     if phase == 'train':
@@ -256,7 +256,7 @@ if __name__ == '__main__':
 
 
     #Target mdoel
-    targer_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=num_classes)
+    target_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=num_classes)
 
     group_filter = [nn.Conv2d, nn.Linear]
     var_transfer_config = {
@@ -276,7 +276,7 @@ if __name__ == '__main__':
 
     transfer_tool(
         from_module=source_model,
-        to_module=targer_model
+        to_module=target_model
     )
     # Finish define model
 
@@ -301,7 +301,7 @@ if __name__ == '__main__':
     }
     steps_per_epoch = len(dataloaders['train'])
 
-    optimizer = torch.optim.AdamW(targer_model.parameters(),
+    optimizer = torch.optim.AdamW(target_model.parameters(),
                                   lr=opt.lr,
                                   weight_decay=opt.weight_decay)
     total_step = steps_per_epoch * opt.epochs
@@ -318,10 +318,10 @@ if __name__ == '__main__':
     support_model.eval()
 
     if torch.cuda.device_count() > 1:
-        targer_model = nn.DataParallel(targer_model, 
+        targer_model = nn.DataParallel(target_model, 
                                        device_ids=list(range(torch.cuda.device_count())))
 
-    best_model, val_acc = train_model(model=targer_model,
+    best_model, val_acc = train_model(model=target_model,
                                       support_model=support_model,
                                       dataloaders=dataloaders,
                                       optimizer=optimizer,
