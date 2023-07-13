@@ -103,9 +103,9 @@ def get_train_valid_loader(dataset_name,
         return (train_loader, valid_loader)
     
     else:
-        train_dataset = Custom_Dataset(data_dir +"/new_train" , 
+        train_dataset = Custom_Dataset(data_dir +"/train" , 
                                        transform=train_transform)
-        valid_dataset = Custom_Dataset(data_dir + "/new_val" , 
+        valid_dataset = Custom_Dataset(data_dir + "/val" , 
                                        transform=valid_transform)
 
         train_loader = DataLoader(train_dataset, 
@@ -165,7 +165,7 @@ def get_test_loader(
         )
         
     else:
-        dataset = Custom_Dataset(data_dir + "/seg_test", 
+        dataset = Custom_Dataset(data_dir + "/test", 
                                  transform=transform)
         data_loader = DataLoader(
             dataset, batch_size=batch_size, shuffle=shuffle,

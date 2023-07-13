@@ -106,6 +106,6 @@ if __name__ == "__main__":
     # split_data_dir("./data/PetImages", save_foler="./data/PetImages", ratio_split = 0.2, random_seed=2)
     # split_data_dir("./data/PetImages/seg_train", save_foler="./data/PetImages", ratio_split = 0.2,  random_seed=2)
 
-
+    # split_data_dir("./data/food-101/temp_train", save_foler="./data/food-101",ratio_split = 0.1, random_seed=2)
 
     pass
