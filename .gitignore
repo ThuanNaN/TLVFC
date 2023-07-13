@@ -13,6 +13,7 @@ __pycache__/
 /data/Intel
 /data/CIFAR10
 /data/CIFAR100
+/data/food-101
 /data/PetImages
 
 
