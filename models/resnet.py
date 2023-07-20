@@ -28,7 +28,6 @@ class CustomResnet(ResNet):
         x = torch.flatten(x, 1)
         # crossover
         if phase == "train":
-            # CustomResnet.crossover_fc(x, p=0.1)
             CustomResnet.crossover_fc_with_pretrain(x, x_pretrain, p)
         x = self.fc(x)
         return x
@@ -49,15 +48,6 @@ class CustomResnet(ResNet):
         _, len_feat = x.size()
         ind = np.random.choice(np.arange(len_feat), size=int(len_feat*p), replace=False)
         x[:,ind] = x_pretrain[:,ind]
-
-    @staticmethod
-    def crossover_fc(x: Tensor, p: float=0.1):
-        N, len_feat = x.size()
-        for i in range(0, N, 2): 
-            ind = np.random.choice(np.arange(len_feat), 
-                                size = int(len_feat*p), 
-                                replace=False)
-            x[i,ind], x[i+1,ind] = x[i+1,ind], x[i,ind]
 
 
     @staticmethod
