@@ -44,8 +44,7 @@ class CustomResnet(ResNet):
     def crossover_fc_with_pretrain(x: Tensor, 
                                 x_pretrain: Tensor, 
                                 p: float=0.1):
-        assert x.size() == x_pretrain.size(), f"x and x_pretrain must be same size. {x.size} != {x_pretrain.size()}"
-        _, len_feat = x.size()
+        len_feat = min(x.size(1), x_pretrain.size(1))
         ind = np.random.choice(np.arange(len_feat), size=int(len_feat*p), replace=False)
         x[:,ind] = x_pretrain[:,ind]
 
