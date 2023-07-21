@@ -8,7 +8,7 @@ from yaml.loader import SafeLoader
 from tqdm import tqdm
 import wandb
 import torch
-import torchvision
+from torchvision import models as torchmodel
 import torch.nn as nn
 from torchsummary import summary
 from torch.optim.lr_scheduler import MultiStepLR
@@ -17,9 +17,8 @@ from dataset_loader.dataset import get_train_valid_loader, get_test_loader
 from models import CustomResnet, CustomVGG
 
 from toolkit import TLV
-from toolkit.standardization import FlattenStandardization, BlocksStandardization
-from toolkit.matching import DPFMatching, DPMatching, IndexMatching
-from toolkit.score.shape_score import ShapeScore
+from toolkit.standardization import FlattenStandardization
+from toolkit.matching import IndexMatching
 from toolkit.transfer import VarTransfer
 
 seed_everything(2)
@@ -29,7 +28,7 @@ logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOGGER = logging.getLogger("Torch-Cls")
 
 
-def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
+def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     since = time.perf_counter()
     num_epochs, device = opt.epochs, opt.device
     LOGGER.info(f"\n{colorstr('Hyperparameter:')} {opt}")
@@ -63,6 +62,8 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     best_val_acc = 0.0
 
     model.to(device)
+    if support_model is not None:
+        support_model.to(device)
     for epoch in range(num_epochs):
         LOGGER.info(colorstr(f'\nEpoch {epoch}/{num_epochs-1}:'))
         for phase in ["train", "val"]:
@@ -85,10 +86,14 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
             for inputs, labels in _phase:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-
+                
+                x_pretrain = None
+                if support_model is not None:
+                    x_pretrain = support_model(inputs)
+                
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
-                    outputs = model(inputs)
+                    outputs = model(inputs, phase, x_pretrain)
                     loss = criterion(outputs, labels)
                     _, preds = torch.max(outputs, 1)
                     if phase == 'train':
@@ -248,13 +253,27 @@ if __name__ == '__main__':
 
     # Define the model before training
     #Source model
-    source_model = torchvision.models.vgg16(
-        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
+    source_model = torchmodel.vgg16(
+        weights=torchmodel.VGG16_Weights.IMAGENET1K_V1)
+
+    fc_mean, fc_std = [] ,[]
+    with torch.no_grad():
+        for fc in source_model.classifier:
+            if isinstance(fc, nn.Linear):
+                fc_mean.append(fc.weight.mean())
+                fc_std.append(fc.weight.std())
+
 
     #Target mdoel
-    target_model = torchvision.models.resnet18(weights=None)
-
-    group_filter = [nn.Conv2d, nn.Linear]
+    target_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=num_classes)
+    nn.init.normal_(
+        target_model.fc.weight, 
+        torch.Tensor(fc_mean).mean(), 
+        torch.Tensor(fc_std).mean()
+    )
+    
+    group_filter = [nn.Conv2d]
+ 
     var_transfer_config = {
         "type_pad": opt.type_pad,
         "type_pool": opt.type_pool,
@@ -274,6 +293,8 @@ if __name__ == '__main__':
         from_module=source_model,
         to_module=target_model
     )
+
+    
     # Finish define model
 
     train_loader, val_loader = get_train_valid_loader(
@@ -308,11 +329,20 @@ if __name__ == '__main__':
         milestones = [int(0.6 * total_step), int(0.8 * total_step)]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
 
+
+    support_model = torchmodel.vgg16(weights = torchmodel.VGG16_Weights.IMAGENET1K_V1)
+    # scale feature of vgg16 model from 25088 to 512
+    support_model.avgpool = nn.AdaptiveAvgPool2d((1,1))
+    support_model.classifier = torch.nn.Identity()
+    support_model.eval()
+
+
     if torch.cuda.device_count() > 1:
         targer_model = nn.DataParallel(target_model, 
                                        device_ids=list(range(torch.cuda.device_count())))
 
     best_model, val_acc = train_model(model=target_model,
+                                      support_model=support_model,
                                       dataloaders=dataloaders,
                                       optimizer=optimizer,
                                       opt=opt,

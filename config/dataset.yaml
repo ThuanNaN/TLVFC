@@ -18,6 +18,13 @@ dataset_config:
     num_classes: 100
 
 
+  food-101: 
+    mean: [0.5372, 0.4363, 0.3366] #no aug
+    std:  [0.2749, 0.2743, 0.2764] #no aug
+    image_size: 224
+    num_classes: 101
+
+
   PetImages: 
     mean: [0.4889, 0.4559, 0.4176] #no aug
     std: [0.2596, 0.2530, 0.2557] #no aug
