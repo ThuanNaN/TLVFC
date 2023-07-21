@@ -27,7 +27,7 @@ class CustomResnet(ResNet):
         x = self.avgpool(x) # >> 64, 512, 1, 1
         x = torch.flatten(x, 1)
         # crossover
-        if phase == "train":
+        if phase == "train" and x_pretrain is not None:
             CustomResnet.crossover_fc_with_pretrain(x, x_pretrain, p)
         x = self.fc(x)
         return x
@@ -36,14 +36,14 @@ class CustomResnet(ResNet):
                 x: Tensor, 
                 phase: str = "", 
                 x_pretrain: Tensor = None, 
-                p:float=0.1
+                p:float = 0.1,
                 ) -> Tensor:
-        return self._forward_impl(x, phase,x_pretrain, p)
+        return self._forward_impl(x, phase, x_pretrain, p)
     
     @staticmethod
     def crossover_fc_with_pretrain(x: Tensor, 
                                 x_pretrain: Tensor, 
-                                p: float=0.1):
+                                p: float):
         len_feat = min(x.size(1), x_pretrain.size(1))
         ind = np.random.choice(np.arange(len_feat), size=int(len_feat*p), replace=False)
         x[:,ind] = x_pretrain[:,ind]
