@@ -27,6 +27,7 @@ logging.getLogger().setLevel(logging.INFO)
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOGGER = logging.getLogger("Torch-Cls")
 
+p_crossover  = 0.1
 
 def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     since = time.perf_counter()
@@ -93,7 +94,7 @@ def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_sch
                 
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
-                    outputs = model(inputs, phase, x_pretrain)
+                    outputs = model(inputs, phase, x_pretrain, p_crossover)
                     loss = criterion(outputs, labels)
                     _, preds = torch.max(outputs, 1)
                     if phase == 'train':
@@ -273,7 +274,7 @@ if __name__ == '__main__':
     )
     
     group_filter = [nn.Conv2d]
- 
+
     var_transfer_config = {
         "type_pad": opt.type_pad,
         "type_pool": opt.type_pool,
@@ -328,7 +329,6 @@ if __name__ == '__main__':
     else:  # use default
         milestones = [int(0.6 * total_step), int(0.8 * total_step)]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
-
 
     support_model = torchmodel.vgg16(weights = torchmodel.VGG16_Weights.IMAGENET1K_V1)
     # scale feature of vgg16 model from 25088 to 512
