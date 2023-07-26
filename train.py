@@ -8,18 +8,17 @@ from yaml.loader import SafeLoader
 from tqdm import tqdm
 import wandb
 import torch
-import torchvision
+from torchvision import models as torchmodel
 import torch.nn as nn
 from torchsummary import summary
 from torch.optim.lr_scheduler import MultiStepLR
 from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result, seed_everything
 from dataset_loader.dataset import get_train_valid_loader, get_test_loader
-from models import CustomResnet, CustomVGG
+from models import CustomResnet
 
 from toolkit import TLV
-from toolkit.standardization import FlattenStandardization, BlocksStandardization
-from toolkit.matching import DPFMatching, DPMatching, IndexMatching
-from toolkit.score.shape_score import ShapeScore
+from toolkit.standardization import FlattenStandardization
+from toolkit.matching import IndexMatching
 from toolkit.transfer import VarTransfer
 
 seed_everything(2)
@@ -28,8 +27,9 @@ logging.getLogger().setLevel(logging.INFO)
 logging.basicConfig(format="%(message)s", level=logging.INFO)
 LOGGER = logging.getLogger("Torch-Cls")
 
+p_crossover  = 0.1
 
-def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
+def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     since = time.perf_counter()
     num_epochs, device = opt.epochs, opt.device
     LOGGER.info(f"\n{colorstr('Hyperparameter:')} {opt}")
@@ -63,6 +63,8 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     best_val_acc = 0.0
 
     model.to(device)
+    if support_model is not None:
+        support_model.to(device)
     for epoch in range(num_epochs):
         LOGGER.info(colorstr(f'\nEpoch {epoch}/{num_epochs-1}:'))
         for phase in ["train", "val"]:
@@ -85,10 +87,14 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
             for inputs, labels in _phase:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-
+                
+                x_pretrain = None
+                if support_model is not None:
+                    x_pretrain = support_model(inputs)
+                
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
-                    outputs = model(inputs)
+                    outputs = model(inputs, phase, x_pretrain, p_crossover)
                     loss = criterion(outputs, labels)
                     _, preds = torch.max(outputs, 1)
                     if phase == 'train':
@@ -110,17 +116,17 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
 
             if phase == 'train':
                 if opt.wandb_log:
-                    wandb.log({"train_acc": epoch_acc, "train_loss": epoch_loss})
+                    wandb.log({"train_acc": epoch_acc, "train_loss": epoch_loss}, step = epoch)
                     if lr_scheduler:
                         wandb.log(
-                            {"lr": lr_scheduler.optimizer.param_groups[0]["lr"]})
+                            {"lr": lr_scheduler.optimizer.param_groups[0]["lr"]}, step = epoch)
                     else:
                         wandb.log({"lr": opt.lr})
                 history["train_loss"].append(epoch_loss)
                 history["train_acc"].append(epoch_acc.item())
             else:
                 if opt.wandb_log:
-                    wandb.log({"val_acc": epoch_acc, "val_loss": epoch_loss})
+                    wandb.log({"val_acc": epoch_acc, "val_loss": epoch_loss}, step = epoch)
                 history["val_loss"].append(epoch_loss)
                 history["val_acc"].append(epoch_acc.item())
                 if epoch_acc > best_val_acc:
@@ -131,9 +137,12 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
                         save_ckpt_(model, DIR_SAVE, "best.pt")
 
     time_elapsed = time.perf_counter() - since
-    print('Training complete in {:.0f}h {:.0f}m {:.0f}s with {} epochs'.format(
-        time_elapsed // 3600, time_elapsed % 3600 // 60, time_elapsed % 60, num_epochs))
-    print('Best val Acc: {:4f}'.format(best_val_acc))
+    LOGGER.info(f"Training complete in \
+                {time_elapsed // 3600}h \
+                {time_elapsed % 3600 // 60}m \
+                { time_elapsed % 60}s with \
+                {num_epochs} epochs")
+    LOGGER.info(f"Best val Acc: {round(best_val_acc.item(), 6)}")
     if opt.save_ckpt:
         save_ckpt_(model, DIR_SAVE, "last.pt")
     model.load_state_dict(best_model_wts)
@@ -142,8 +151,8 @@ def train_model(model, dataloaders, optimizer, opt, wandb, lr_scheduler=None):
     if opt.log_result:
         plot_and_log_result(DIR_SAVE, history)
     if opt.save_ckpt:
-        print("Best model weight saved at {}/weights/best.pt".format(DIR_SAVE))
-        print("Last model weight saved at {}/weights/last.pt".format(DIR_SAVE))
+        LOGGER.info(f"Best model weight saved at {DIR_SAVE}/weights/best.pt")
+        LOGGER.info(f"Last model weight saved at {DIR_SAVE}/weights/last.pt")
 
     return model, best_val_acc.item()
 
@@ -243,18 +252,32 @@ if __name__ == '__main__':
     with open('./config/dataset.yaml') as f:
         dataset_config = yaml.load(f, Loader=SafeLoader)
 
-    print(f"\n*** RUN ON SEED {opt.seed} ***")
+    LOGGER.info(f"\n*** RUN ON SEED {opt.seed} ***")
     num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
 
     # Define the model before training
     #Source model
-    source_model = torchvision.models.vgg16(
-        weights=torchvision.models.VGG16_Weights.IMAGENET1K_V1)
+    source_model = torchmodel.vgg16(
+        weights=torchmodel.VGG16_Weights.IMAGENET1K_V1)
+
+    fc_mean, fc_std = [] ,[]
+    with torch.no_grad():
+        for fc in source_model.classifier:
+            if isinstance(fc, nn.Linear):
+                fc_mean.append(fc.weight.mean())
+                fc_std.append(fc.weight.std())
+
 
     #Target mdoel
-    target_model = torchvision.models.resnet18(weights=None)
+    target_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=num_classes)
+    nn.init.normal_(
+        target_model.fc.weight, 
+        torch.Tensor(fc_mean).mean(), 
+        torch.Tensor(fc_std).mean()
+    )
+    
+    group_filter = [nn.Conv2d]
 
-    group_filter = [nn.Conv2d, nn.Linear]
     var_transfer_config = {
         "type_pad": opt.type_pad,
         "type_pool": opt.type_pool,
@@ -308,18 +331,26 @@ if __name__ == '__main__':
         milestones = [int(0.6 * total_step), int(0.8 * total_step)]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
 
+    support_model = torchmodel.vgg16(weights = torchmodel.VGG16_Weights.IMAGENET1K_V1)
+    # scale feature of vgg16 model from 25088 to 512
+    support_model.avgpool = nn.AdaptiveAvgPool2d((1,1))
+    support_model.classifier = torch.nn.Identity()
+    support_model.eval()
+
+
     if torch.cuda.device_count() > 1:
         targer_model = nn.DataParallel(target_model, 
                                        device_ids=list(range(torch.cuda.device_count())))
 
     best_model, val_acc = train_model(model=target_model,
+                                      support_model=support_model,
                                       dataloaders=dataloaders,
                                       optimizer=optimizer,
                                       opt=opt,
                                       wandb=wandb,
                                       lr_scheduler=lr_scheduler)
     test_acc = test_model(best_model, dataloaders["test"], opt.device)
-    print("Validation accuracy: ", round(val_acc, 6))
-    print("Test accuracy: ", round(test_acc, 6))
+    LOGGER.info(f"Validation accuracy: {round(val_acc, 6)}")
+    LOGGER.info(f"Test accuracy: {round(test_acc, 6)}")
     if opt.wandb_log:
         wandb.finish()

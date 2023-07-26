@@ -1,10 +1,9 @@
 from typing import List, Type, Union
-import numpy as np
 import torch
 from torch import Tensor
 from torchvision.models import ResNet
 from torchvision.models.resnet import BasicBlock, Bottleneck
-
+from models.utils import crossover, crossover_simp
 
 class CustomResnet(ResNet):
     def __init__(self,
@@ -28,7 +27,7 @@ class CustomResnet(ResNet):
         x = torch.flatten(x, 1)
         # crossover
         if phase == "train" and x_pretrain is not None:
-            CustomResnet.crossover_fc_with_pretrain(x, x_pretrain, p)
+            crossover_simp(x, x_pretrain, p)
         x = self.fc(x)
         return x
 
@@ -40,14 +39,6 @@ class CustomResnet(ResNet):
                 ) -> Tensor:
         return self._forward_impl(x, phase, x_pretrain, p)
     
-    @staticmethod
-    def crossover_fc_with_pretrain(x: Tensor, 
-                                x_pretrain: Tensor, 
-                                p: float):
-        len_feat = min(x.size(1), x_pretrain.size(1))
-        ind = np.random.choice(np.arange(len_feat), size=int(len_feat*p), replace=False)
-        x[:,ind] = x_pretrain[:,ind]
-
 
     @staticmethod
     def _get_model_custom(model_base: str,  
