@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 from config.vgg_configs import cfgs
 from timm.models.layers import trunc_normal_
-from models.utils import crossover, crossover_simp
+from models.utils import uniform_crossover, uniform_crossover_simp
 
 def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False, k_size=3,  pad=1) -> nn.Sequential:
     layers: List[nn.Module] = []
@@ -68,7 +68,7 @@ class CustomVGG(nn.Module):
         x = self.avgpool(x) # >> (64, 512, 1, 1) 
         x = torch.flatten(x, 1) # >> (64, 512) 
         if phase == "train" and x_pretrain is not None:
-            crossover_simp(x, x_pretrain, p)
+            uniform_crossover_simp(x, x_pretrain, p)
         x = self.classifier(x)
         return x
 
