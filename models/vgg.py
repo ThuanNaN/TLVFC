@@ -78,7 +78,7 @@ class CustomVGG(nn.Module):
         if model_base == "vgg16":
             model = CustomVGG(
                 features=make_layers(cfgs["D"], batch_norm=False,
-                                    k_size=3, pad="same"),
+                                    k_size=3, pad=1),
                 num_classes=num_classes,
                 init_weights=True,
                 base_init=base_init,
@@ -90,7 +90,7 @@ class CustomVGG(nn.Module):
         elif model_base == "vgg19":
             model = CustomVGG(
                 features=make_layers(cfgs["E"], batch_norm=False,
-                                    k_size=3, pad="same"),
+                                    k_size=3, pad=1),
                 num_classes=num_classes,
                 init_weights=True,
                 base_init=base_init,
