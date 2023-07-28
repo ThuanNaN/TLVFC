@@ -3,7 +3,7 @@ import torch
 from torch import Tensor
 from torchvision.models import ResNet
 from torchvision.models.resnet import BasicBlock, Bottleneck
-from models.utils import uniform_crossover, uniform_crossover_simp
+from models.utils import crossover, crossover_simp
 
 class CustomResnet(ResNet):
     def __init__(self,
@@ -27,7 +27,7 @@ class CustomResnet(ResNet):
         x = torch.flatten(x, 1)
         # crossover
         if phase == "train" and x_pretrain is not None:
-            uniform_crossover_simp(x, x_pretrain, p)
+            crossover(x, x_pretrain, p)
         x = self.fc(x)
         return x
 

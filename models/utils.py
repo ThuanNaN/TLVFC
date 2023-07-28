@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 
-def uniform_crossover(x: Tensor, 
+def crossover(x: Tensor, 
               x_pretrain: Tensor, 
               p_crossover: float):
     len_feat = min(x.size(1), x_pretrain.size(1))
@@ -11,7 +11,7 @@ def uniform_crossover(x: Tensor,
 
 
 
-def uniform_crossover_simp(x: Tensor, 
+def crossover_simp(x: Tensor, 
                     x_pretrain: Tensor, 
                     p: float):
     len_feat = min(x.size(1), x_pretrain.size(1))
