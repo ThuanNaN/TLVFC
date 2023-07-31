@@ -184,7 +184,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', type=int, default=2,
                         help='random seed will start at seed = 2 (default: %(default)s)')
     parser.add_argument('--base-init', type=str, default="He",
-                        help='The method to initialize for parameters ["He", "Glorot", "Trunc"] (default: %(default)s)')
+                        help='The method to initialize for parameters ["He", "Glorot"] (default: %(default)s)')
     # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
     parser.add_argument('--keep', default='interLeaved', type=str,
                         help='Method to choose for down weight when using --transfer-weight flag')

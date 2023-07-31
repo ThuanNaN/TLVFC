@@ -2,8 +2,7 @@ from typing import cast, List, Union
 import torch
 import torch.nn as nn
 from config.vgg_configs import cfgs
-from timm.models.layers import trunc_normal_
-from models.utils import uniform_crossover, uniform_crossover_simp
+from models.utils import crossover, crossover_simp
 
 def make_layers(cfg: List[Union[str, int]], batch_norm: bool = False, k_size=3,  pad=1) -> nn.Sequential:
     layers: List[nn.Module] = []
@@ -48,8 +47,6 @@ class CustomVGG(nn.Module):
                             m.weight, mode="fan_out", nonlinearity="relu")
                     elif base_init == "Glorot":
                         nn.init.xavier_normal_(m.weight, gain=1)
-                    elif base_init == "Trunc":
-                        trunc_normal_(m.weight, std=.02)
                     if m.bias is not None:
                         nn.init.constant_(m.bias, 0)
                 elif isinstance(m, nn.BatchNorm2d):
@@ -68,7 +65,7 @@ class CustomVGG(nn.Module):
         x = self.avgpool(x) # >> (64, 512, 1, 1) 
         x = torch.flatten(x, 1) # >> (64, 512) 
         if phase == "train" and x_pretrain is not None:
-            uniform_crossover_simp(x, x_pretrain, p)
+            crossover(x, x_pretrain, p)
         x = self.classifier(x)
         return x
 
