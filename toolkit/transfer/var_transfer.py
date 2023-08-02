@@ -1,4 +1,3 @@
-import numpy as np
 import copy
 import torch
 import torch.nn as nn
@@ -6,6 +5,7 @@ from toolkit.base_transfer import Transfer
 import torch.nn.functional as F
 from models.init import compute_std
 
+CORRECTION = 0
 
 class VarTransfer(Transfer):
     def __init__(self, **kwargs) -> None:
@@ -97,7 +97,7 @@ class VarTransfer(Transfer):
     def _fin_down(tensor_from, tensor_to_size, **kwargs):
         temp_weight = []
         for fan_out in tensor_from:
-            fan_in_var = np.var(fan_out.detach().numpy(), axis=(1,2))
+            fan_in_var = torch.var(fan_out, dim=(1,2), correction=CORRECTION)
             fan_in_ind= VarTransfer.choose_candidate(fan_in_var, 
                                            choice_type=kwargs["choice_method"]['keep'], 
                                            num_candidate=tensor_to_size[1])
@@ -108,7 +108,7 @@ class VarTransfer(Transfer):
     @torch.no_grad()
     def _fin_up(tensor_from, tensor_to, **kwargs):
         for f_ind, fan_out in enumerate(tensor_to):
-            fan_in_var = np.var(fan_out.detach().numpy(), axis=(1,2))
+            fan_in_var = torch.var(fan_out, dim=(1,2), correction=CORRECTION)
             fan_in_ind = VarTransfer.choose_candidate(fan_in_var, 
                                            choice_type=kwargs["choice_method"]['remove'], 
                                            num_candidate=tensor_from.size(1))
@@ -119,7 +119,7 @@ class VarTransfer(Transfer):
     @staticmethod
     @torch.no_grad()
     def _fout_down(tensor_from, tensor_to_size, **kwargs):
-        fan_out_var = np.var(tensor_from.detach().numpy(), axis=(1,2,3))
+        fan_out_var = torch.var(tensor_from, dim=(1,2,3), correction=CORRECTION)
         fan_out_ind = VarTransfer.choose_candidate(fan_out_var, 
                                       choice_type=kwargs["choice_method"]['keep'], 
                                       num_candidate=tensor_to_size[0])
@@ -128,7 +128,7 @@ class VarTransfer(Transfer):
     @staticmethod
     @torch.no_grad()
     def _down_all(tensor_from, tensor_to_size, **kwargs):
-        fan_out_var = np.var(tensor_from.detach().numpy(), axis=(1,2,3))
+        fan_out_var = torch.var(tensor_from, dim=(1,2,3), correction=CORRECTION)
         fan_out_ind = VarTransfer.choose_candidate(fan_out_var, 
                                        choice_type=kwargs["choice_method"]['keep'], 
                                        num_candidate=tensor_to_size[0]) 
@@ -136,7 +136,7 @@ class VarTransfer(Transfer):
         temp_fan_out = []
 
         for fan_out in temp_weight:
-            fan_in_var = np.var(fan_out.detach().numpy(), axis=(1,2))
+            fan_in_var = torch.var(fan_out, dim=(1,2), correction=CORRECTION)
             fan_in_ind = VarTransfer.choose_candidate(fan_in_var, 
                                            choice_type=kwargs["choice_method"]['keep'], 
                                            num_candidate=tensor_to_size[1]) 
@@ -147,13 +147,13 @@ class VarTransfer(Transfer):
     @staticmethod
     @torch.no_grad()
     def _up_all(tensor_from, tensor_to, **kwargs):
-        fan_out_var = np.var(tensor_to.detach().numpy(), axis=(1,2,3))
+        fan_out_var = torch.var(tensor_to, dim=(1,2,3), correction=CORRECTION)
         fan_out_ind = VarTransfer.choose_candidate(fan_out_var,
                                        choice_type=kwargs["choice_method"]['remove'],
                                        num_candidate=tensor_from.size(0))
 
         for i, f_ind in enumerate(fan_out_ind):
-            fan_in_var = np.var(tensor_to[f_ind].detach().numpy(), axis=(1,2))
+            fan_in_var = torch.var(tensor_to[f_ind], dim=(1,2), correction=CORRECTION)
             fan_in_ind = VarTransfer.choose_candidate(fan_in_var,
                                            choice_type=kwargs["choice_method"]['remove'],
                                            num_candidate=tensor_from.size(1))
@@ -164,7 +164,7 @@ class VarTransfer(Transfer):
     @staticmethod
     @torch.no_grad()
     def _fout_up(tensor_from, tensor_to, **kwargs):
-        fan_out_var = np.var(tensor_to.detach().numpy(), axis=(1,2,3))
+        fan_out_var = torch.var(tensor_to, dim=(1,2,3), correction=CORRECTION)
         fan_out_ind = VarTransfer.choose_candidate(fan_out_var,
                                        choice_type=kwargs["choice_method"]['remove'],
                                        num_candidate=tensor_from.size(0))
@@ -205,12 +205,10 @@ class VarTransfer(Transfer):
     @staticmethod
     @torch.no_grad()
     def _shuffe_kernel(weight):
-        fan_out_ind = np.arange(weight.size(0))
-        np.random.shuffle(fan_out_ind)
+        fan_out_ind = torch.randperm(weight.size(0))
         weight = weight[fan_out_ind]
         for i in range(weight.size(0)):
-            fan_in_ind = np.arange(weight.size(1))
-            np.random.shuffle(fan_in_ind)
+            fan_in_ind = torch.randperm(weight.size(1))
             weight[i] = weight[i][fan_in_ind]
         return weight
 
@@ -264,18 +262,17 @@ class VarTransfer(Transfer):
 
     @staticmethod
     def choose_candidate(candidate, choice_type, num_candidate):
-        candidate_sorted = np.argsort(candidate)
+        candidate_sorted = torch.argsort(candidate)
         if choice_type == "maxVar":
             candidate_ind = candidate_sorted[-num_candidate:]
         elif choice_type == "minVar":
             candidate_ind = candidate_sorted[:num_candidate]
         elif choice_type == "random":
-            candidate_ind = np.random.choice(
-                np.arange(len(candidate)), num_candidate, replace=False)
+            candidate_ind = torch.randint(0, len(candidate)-1, size=(num_candidate,))
         elif choice_type == "twoTailed":
             oneTailed = int(num_candidate/2)
-            candidate_ind = np.concatenate(
-                (candidate_sorted[:oneTailed], candidate_sorted[-oneTailed:]), axis=0)
+            candidate_ind = torch.cat(
+                (candidate_sorted[:oneTailed], candidate_sorted[-oneTailed:]), dim=0)
         elif choice_type == "interLeaved":
             step = int(len(candidate_sorted) / num_candidate)
             candidate_ind = candidate_sorted[slice(1, len(candidate_sorted), step)]
