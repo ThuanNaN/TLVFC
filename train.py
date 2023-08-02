@@ -10,7 +10,6 @@ import wandb
 import torch
 from torchvision import models as torchmodel
 import torch.nn as nn
-from torchsummary import summary
 from torch.optim.lr_scheduler import MultiStepLR
 from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result, seed_everything
 from dataset_loader.dataset import get_train_valid_loader, get_test_loader
@@ -47,13 +46,11 @@ def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_sch
             f"\n{colorstr('LR Scheduler:')} {type(lr_scheduler).__name__}")
     else:
         lr_scheduler = None
-    if opt.show_summary:
-        summary(model, (3, 224, 224))
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model, device_ids=list(
             range(torch.cuda.device_count())))
 
-    criterion = torch.nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss()
     LOGGER.info(f"\n{colorstr('Loss:')} {type(criterion).__name__}")
 
     history = {"train_loss": [], "train_acc": [],
