@@ -71,3 +71,16 @@ transfer_tool(
 # training the target model with knowledge is transferred
 train(target_model)
 ```
+
+## Experiemental results
+
+We present the performance evaluation of our proposed method, TLV (Transfer Learning with Variance-based Regularization), along with comparisons to other methods on four different datasets: CIFAR-10, CIFAR-100, Food-101, and PetImages. The benchmarking is conducted using ResNet18 as the target model and VGG16 pretrained with ImageNet1K weights as the source model for the transfer process.
+
+| Method   | CIFAR10 | CIFAR100 | Food-101 | PetImages |
+|----------|---------|----------|----------|-----------|
+| He initialization | 0.7635 | 0.4178 | 0.675 | 0.9481 |
+| DPIAT     | 0.7695 | 0.4155 | 0.6806 | 0.9498 |
+| TLV-base  | 0.7677 | 0.4234 | 0.7038 | 0.9669 |
+| TLV-cross | 0.7674 | 0.4293 | **0.7043** | 0.9686 |
+| TLV      | **0.7724** | **0.4294** | 0.7025 | **0.9696** |
+
