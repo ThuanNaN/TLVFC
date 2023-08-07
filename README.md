@@ -1,10 +1,12 @@
 # Transfer Learning using Variance-based mapping and Feature crossover
+[![python](https://img.shields.io/badge/Python-3.9-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
+
+This is the official implementation of paper: TLV
 
 Knowledge from the pretrained model is transferred to the target model in the form of weight at convolution layers and in the form of
 cumulative statistics to initialize weight for linear layers. Finally, a feature crossover strategy is utilized to improve the performance of target model during training.
 
 ![TLV-method](./figures/fig_pipeline.png)
-
 
 ## Installation
 ```bash
