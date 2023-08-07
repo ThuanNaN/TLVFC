@@ -6,7 +6,6 @@ __pycache__/
 *.pt
 .DS_Store
 *.ini
-/figures/*.png
 .ipynb_checkpoints
 
 
