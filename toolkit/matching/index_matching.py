@@ -51,7 +51,7 @@ class IndexMatching(Matching):
             from_module = from_module[::-1]
         len_to_module = len(to_module)
         len_from_module = len(from_module)
-        scale = len_to_module / len_from_module
+        scale = len_from_module / len_to_module
         matched, matched_indices = [], []
         for layer_idx in range(len_to_module):
             src_index = self._absolute_mapping(len_from_module=len_from_module,
@@ -66,7 +66,7 @@ class IndexMatching(Matching):
                         dst_index:int,
                         scale:float,
                         zero_point:float = 0.0):
-        src_index = round((1/scale)*dst_index + zero_point)
+        src_index = round(scale*dst_index + zero_point)
         if src_index < 0:
             return 0
         elif src_index >= len_from_module:
