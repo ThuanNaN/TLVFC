@@ -49,12 +49,12 @@ class IndexMatching(Matching):
                     ) -> List[Tuple[Optional[nn.Module]]]:
         if invert:
             from_module = from_module[::-1]
-        n = len(to_module)
-        m = len(from_module)
-        scale = n / m
+        len_to_module = len(to_module)
+        len_from_module = len(from_module)
+        scale = len_from_module / len_to_module
         matched, matched_indices = [], []
-        for layer_idx in range(n):
-            src_index = self._absolute_mapping(num_src_layer=m,
+        for layer_idx in range(len_to_module):
+            src_index = self._absolute_mapping(len_from_module=len_from_module,
                                                 dst_index=layer_idx,
                                                 scale=scale)
             matched.append((from_module[src_index], to_module[layer_idx]))
@@ -62,15 +62,15 @@ class IndexMatching(Matching):
         return matched, matched_indices
 
     def _absolute_mapping(self, 
-                        num_src_layer: int,
+                        len_from_module: int,
                         dst_index:int,
                         scale:float,
                         zero_point:float = 0.0):
-        src_index = round((1/scale)*dst_index + zero_point)
+        src_index = round(scale*dst_index + zero_point)
         if src_index < 0:
             return 0
-        elif src_index >= num_src_layer:
-            return num_src_layer - 1
+        elif src_index >= len_from_module:
+            return len_from_module - 1
         else:
             return src_index
 
