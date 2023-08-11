@@ -10,7 +10,17 @@ CORRECTION = 0
 class VarTransfer(Transfer):
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self.var_transfer_kwargs = kwargs
+        if len(kwargs) == 0:
+            self.var_transfer_kwargs = {
+                "type_pad": 'zero',
+                "type_pool": 'avg',
+                "choice_method": {
+                    "keep": "interLeaved",
+                    "remove": 'random'
+                }
+            }
+        else:
+            self.var_transfer_kwargs = kwargs
 
     def transfer_layer(self, tensor_from: torch.Tensor, tensor_to: torch.Tensor, *args, **kwargs) -> None:
         if tensor_from is None or tensor_to is None:
