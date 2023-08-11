@@ -1,5 +1,8 @@
 # Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover
-[![python](https://img.shields.io/badge/Python-3.9-3776AB.svg?style=flat&logo=python&logoColor=white)](https://www.python.org)
+
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white)
+![WAndB](https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-28-gray.svg)
 
 This is the official implementation of paper: TLVFC
 
@@ -9,6 +12,10 @@ cumulative statistics to initialize weight for linear layers. Finally, a feature
 ![TLV-method](./figures/fig_pipeline.png)
 
 ## 1. Installation
+Requirements:
+- Python 3.9
+- Pytorh 1.12.1 + cu116
+- Other packages run:
 ```bash
 pip install -r requirements.txt
 ```
