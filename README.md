@@ -11,15 +11,14 @@ cumulative statistics to initialize weight for linear layers. Finally, a feature
 
 ![TLV-method](./figures/fig_pipeline.png)
 
-## 1. Installation
-Requirements:
-- Python 3.9
-- Pytorh 1.12.1 + cu116
+## 1. Dependencies
+- Python 3.9 or above
+- Pytorh 1.12.1+cu116 or above
 - Other packages run:
 ```bash
 pip install -r requirements.txt
 ```
-## 2. Usage
+## 2. Quick Start
 ```python
 from torchvision import models as torchmodel
 from models import CustomResnet
