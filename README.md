@@ -8,11 +8,11 @@ cumulative statistics to initialize weight for linear layers. Finally, a feature
 
 ![TLV-method](./figures/fig_pipeline.png)
 
-## Installation
+## 1. Installation
 ```bash
 pip install -r requirements.txt
 ```
-## Usage
+## 2. Usage
 ```python
 from torchvision import models as torchmodel
 from models import CustomResnet
@@ -45,7 +45,7 @@ transfer_tool(
 train(target_model)
 ```
 
-## Experiemental results
+## 3. Experiemental results
 
 We present the performance evaluation of our proposed method, TLV (Transfer Learning with Variance-based Regularization), along with comparisons to other methods on four different datasets: CIFAR-10, CIFAR-100, Food-101, and PetImages. The benchmarking is conducted using ResNet18 as the target model and VGG16 pretrained with ImageNet1K weights as the source model for the transfer process.
 
@@ -57,6 +57,13 @@ We present the performance evaluation of our proposed method, TLV (Transfer Lear
 | TLVFC-cross | 0.7674 | 0.4293 | **0.7043** | 0.9686 |
 | TLVFC      | **0.7724** | **0.4294** | 0.7025 | **0.9696** |
 
-## Citation
+## 4. Citation
 ```
+@misc{tlvfc2023,
+      title={Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover}, 
+      author={Thuan Duong and Thang Duong and Phuc Nguyen and Vinh Dinh},
+      year={2024},
+      eprint={},
+      archivePrefix={}
+}
 ```
