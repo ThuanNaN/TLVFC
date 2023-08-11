@@ -1,6 +1,4 @@
 pytorch_warmup==0.1.1
-matplotlib
-scikit-image==0.20.0
 tqdm==4.64.1
 PyYaml==6.0
 wget==3.2
