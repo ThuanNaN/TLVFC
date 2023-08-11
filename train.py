@@ -15,7 +15,7 @@ from utils.general import AppPath, colorstr, save_ckpt_, plot_and_log_result, se
 from dataset_loader.dataset import get_train_valid_loader, get_test_loader
 from models import CustomResnet
 
-from toolkit import TLV
+from toolkit import TLVFC
 from toolkit.standardization import FlattenStandardization
 from toolkit.matching import IndexMatching
 from toolkit.transfer import VarTransfer
@@ -254,40 +254,16 @@ if __name__ == '__main__':
 
     # Define the model before training
     #Source model
-    source_model = torchmodel.vgg16(
-        weights=torchmodel.VGG16_Weights.IMAGENET1K_V1)
-
-    fc_mean, fc_std = [] ,[]
-    with torch.no_grad():
-        for fc in source_model.classifier:
-            if isinstance(fc, nn.Linear):
-                fc_mean.append(fc.weight.mean())
-                fc_std.append(fc.weight.std())
-
+    source_model = torchmodel.vgg16(weights=torchmodel.VGG16_Weights.IMAGENET1K_V1)
 
     #Target mdoel
     target_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=num_classes)
-    nn.init.normal_(
-        target_model.fc.weight, 
-        torch.Tensor(fc_mean).mean(), 
-        torch.Tensor(fc_std).mean()
-    )
     
-    group_filter = [nn.Conv2d]
-
-    var_transfer_config = {
-        "type_pad": opt.type_pad,
-        "type_pool": opt.type_pool,
-        "choice_method": {
-            "keep": opt.keep,
-            "remove": opt.remove
-        }
-    }
-
-    transfer_tool = TLV(
-        standardization=FlattenStandardization(group_filter),
+    # Transfer process
+    transfer_tool = TLVFC(
+        standardization=FlattenStandardization(),
         matching=IndexMatching(),
-        transfer=VarTransfer(**var_transfer_config)
+        transfer=VarTransfer()
     )  
 
     transfer_tool(
