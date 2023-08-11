@@ -182,19 +182,6 @@ if __name__ == '__main__':
                         help='random seed will start at seed = 2 (default: %(default)s)')
     parser.add_argument('--base-init', type=str, default="He",
                         help='The method to initialize for parameters ["He", "Glorot"] (default: %(default)s)')
-    # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
-    parser.add_argument('--keep', default='interLeaved', type=str,
-                        help='Method to choose for down weight when using --transfer-weight flag')
-    # choices= ['N/A', 'maxVar', 'minVar', 'twoTailed', 'interLeaved', 'random']
-    parser.add_argument('--remove', default='random', type=str,
-                        help='Method to choose for up weight when using --transfer-weight flag')
-    # choices= ['zero', 'init']
-    parser.add_argument('--type-pad', type=str, default="zero",
-                        help='Add padding when up size kernel. \
-                            if use init, it is base on the --base-init method. (default: %(default)s)')
-    # choices= ['avg', 'max']
-    parser.add_argument('--type-pool', type=str, default="avg",
-                        help='down size kernel. Using when down size of kernel. (default: %(default)s)')
     # choices= ['CIFAR10', 'Intel', 'PetImages']
     parser.add_argument('--data-name', type=str, default="CIFAR10",
                         help='The name of dataset (default: %(default)s)')
