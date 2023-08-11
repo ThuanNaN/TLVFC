@@ -4,12 +4,9 @@ import torch.nn as nn
 from toolkit.base_standardization import Standardization
 
 class FlattenStandardization(Standardization):
-
-    def __init__(self, group_filter: Optional[List[nn.Module]] = None
-                 ) -> None:
-        self.group_filter = group_filter
-
-    def standardize(self, module: nn.Module, 
+    def standardize(self, 
+                    module: nn.Module, 
+                    group_filter: Optional[List[nn.Module]] = None,
                     *args, **kwargs) -> List[Union[nn.Module, List[nn.Module]]]:
         classes = [
             nn.Conv1d, nn.Conv2d, nn.Conv3d, nn.ConvTranspose1d, nn.ConvTranspose2d, nn.ConvTranspose3d,
@@ -25,8 +22,8 @@ class FlattenStandardization(Standardization):
         if len(layers) == 0:
             layers = [module]
         
-        if self.group_filter is not None:
-            return FlattenStandardization.filter(layers, self.group_filter)
+        if group_filter is not None:
+            return FlattenStandardization.filter(layers, group_filter)
         return layers
 
     @staticmethod
