@@ -1,6 +1,6 @@
 from typing import Any, List, Set, Dict, Union, Tuple
 from inflection import camelize
-
+import torch
 import torch.nn as nn
 
 from toolkit.base_standardization import Standardization
@@ -12,7 +12,13 @@ from toolkit.utils.flatten import flatten_modules
 from toolkit.utils.dot_dict import DotDict
 from toolkit.utils.subclass_utils import get_subclasses
 
-class TLV:
+group_filter: Dict = {
+    "conv": [nn.Conv2d],
+    "fc":[nn.Linear]
+}
+
+
+class TLVFC:
     standardization: Standardization = None
     matching: Matching = None
     transfer: Transfer = None
@@ -21,20 +27,28 @@ class TLV:
     def run(self, from_module: nn.Module, to_module: nn.Module, *args, **kwargs):
         context = {'from_module': from_module, 'to_module': to_module}
 
-        flat_module_from = set(flatten_modules(from_module))
-        flat_module_to = set(flatten_modules(to_module))
-        from_paths, to_paths = self.standardization(from_module), self.standardization(to_module)
+        conv_from_paths = self.standardization(from_module, group_filter['conv'])
+        conv_to_paths = self.standardization(to_module, group_filter['conv'])
 
-        self.score.precompute_scores(from_module, to_module)
-        self.matching.set_score(self.score)
-        matched_tensors = self.matching(from_paths, to_paths, context=context)
-
+        matched_tensors = self.matching(conv_from_paths, conv_to_paths, context=context)      
         self.transfer(matched_tensors, context=context)
 
+        # initialize fully-connected
+        fc_from_paths = self.standardization(from_module, group_filter['fc'])
+        fc_to_paths = self.standardization(to_module, group_filter['fc'])
+
+        outputs = TLVFC.compute_mean_std(fc_from_paths, len(fc_to_paths))
+
+        for m in fc_to_paths:
+            nn.init.normal_(m.weight, outputs['mean'], outputs['std'])
+            nn.init.constant_(m.bias, 0)
+
+        # return stats
+        flat_module_from = set(flatten_modules(from_module))
+        flat_module_to = set(flatten_modules(to_module))
         all_from = len(flat_module_from)
         all_to = len(flat_module_to)
         self._flat_remove(matched_tensors, flat_module_from, flat_module_to)
-
         return TransferStats(
             all_from=all_from,
             all_to=all_to,
@@ -81,17 +95,6 @@ class TLV:
         self._try_setting(ctx, 'score', score, Score)
 
 
-    @staticmethod
-    def make(standardization: Union[Standardization, str, Tuple[Standardization, Dict], Tuple[str, Dict]]='blocks',
-             matching: Union[Matching, str, Tuple[Matching, Dict], Tuple[str, Dict]] = 'dp',
-             transfer: Union[Transfer, str, Tuple[Transfer, Dict], Tuple[str, Dict]] = 'clip',
-             score: Union[Score, str, Tuple[Score, Dict], Tuple[str, Dict]] = 'ShapeScore',
-             *args,
-             **kwargs):
-        
-        return TLV(standardization, matching, transfer, score, *args, **kwargs)
-    
-
     def _try_setting(self, ctx: Dict, key: str, value: Any, clazz: Any) -> None:
         kwargs = {}
         if isinstance(value, tuple):
@@ -117,3 +120,26 @@ class TLV:
             if res is not None:
                 return res
         raise ValueError()
+    
+    @staticmethod
+    def make(standardization: Union[Standardization, str, Tuple[Standardization, Dict], Tuple[str, Dict]]='blocks',
+             matching: Union[Matching, str, Tuple[Matching, Dict], Tuple[str, Dict]] = 'dp',
+             transfer: Union[Transfer, str, Tuple[Transfer, Dict], Tuple[str, Dict]] = 'clip',
+             score: Union[Score, str, Tuple[Score, Dict], Tuple[str, Dict]] = 'ShapeScore',
+             *args,
+             **kwargs):
+        
+        return TLVFC(standardization, matching, transfer, score, *args, **kwargs)
+    
+    @staticmethod
+    def compute_mean_std(modules: List[nn.Module], len_target_module: int):
+        fc_mean, fc_std = torch.zeros(len(modules)), torch.zeros(len(modules))
+        with torch.no_grad():
+            for index, m in enumerate(modules):
+                fc_mean[index] = m.weight.mean()
+                fc_std[index] = m.weight.std()
+
+        return {
+            "mean": fc_mean.mean() / len_target_module,
+            "std": fc_std.mean() / len_target_module
+        } 
