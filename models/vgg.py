@@ -172,9 +172,6 @@ class CustomVGG(nn.Module):
 
         else:
             raise Exception(
-                "model_name must be in ['vgg16_5x5_Down', \
-                                        'vgg16_5x5_Up', \
-                                        'vgg16_5x5_DownUp', \
-                                        'vgg16_5x5_Sort', \
-                                        'vgg16_5x5_Long']." )
+                "model_name must be in ['vgg16', vgg19, vgg16_5x5_init, vgg16_5x5_Down, 'vgg16_5x5_Up', \
+                                        'vgg16_5x5_DownUp', 'vgg16_5x5_Sort','vgg16_5x5_Long']." )
         return model
