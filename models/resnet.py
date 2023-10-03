@@ -47,6 +47,10 @@ class CustomResnet(ResNet):
             model = CustomResnet(BasicBlock, [2,2,2,2], num_classes=num_classes)
         elif model_base == "resnet34":
             model = CustomResnet(Bottleneck, [3, 4, 6, 3], num_classes = num_classes)
+        elif model_base == "resnet101":
+            model = CustomResnet(Bottleneck, [3, 4, 23, 3], num_classes = num_classes)
+        elif model_base == "resnet152":
+            model = CustomResnet(Bottleneck, [3, 8, 36, 3], num_classes = num_classes)
         else:
-            raise Exception("The model name must be in ()")
+            raise Exception("The model name must be in [resnet18, resnet34, resnet152]")
         return model
