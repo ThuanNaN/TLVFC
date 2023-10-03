@@ -36,7 +36,7 @@ transfer_tool = TLVFC(
 )  
 
 # define a pre-trained model and load the checkpoint weight from the torchvision hub
-pretrained_model = torchmodel.vgg16(weigths = torchmodel.VGG16_Weights.IMAGENET1K_V1)
+pretrained_model = torchmodel.vgg16(weights = torchmodel.VGG16_Weights.IMAGENET1K_V1)
 
 # define the target model, which is enclosed in a new training mechanism.
 target_model = CustomResnet._get_model_custom(model_base='resnet18', num_classes=100)
