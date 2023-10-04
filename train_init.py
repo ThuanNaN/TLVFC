@@ -84,11 +84,11 @@ def train_model(model, support_model, dataloaders, optimizer, opt, wandb, lr_sch
             for inputs, labels in _phase:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
-                
+
                 x_pretrain = None
                 if support_model is not None:
                     x_pretrain = support_model(inputs)
-                
+
                 optimizer.zero_grad()
                 with torch.set_grad_enabled(phase == "train"):
                     outputs = model(inputs, phase, x_pretrain, p_crossover)
@@ -241,23 +241,10 @@ if __name__ == '__main__':
     num_classes = dataset_config["dataset_config"][opt.data_name]["num_classes"]
 
     # Define the model before training
-    #Source model
-    source_model = torchmodel.vgg19(weights=torchmodel.VGG19_Weights.IMAGENET1K_V1)
 
     #Target mdoel
     target_model = CustomResnet._get_model_custom(model_base=opt.model_base, num_classes=num_classes)
-    
-    # Transfer process
-    transfer_tool = TLVFC(
-        standardization=FlattenStandardization(),
-        matching=IndexMatching(),
-        transfer=VarTransfer()
-    )  
 
-    transfer_tool(
-        from_module=source_model,
-        to_module=target_model
-    )
     # Finish define model
 
     train_loader, val_loader = get_train_valid_loader(
@@ -292,12 +279,7 @@ if __name__ == '__main__':
         milestones = [int(0.6 * total_step), int(0.8 * total_step)]
     lr_scheduler = MultiStepLR(optimizer, milestones=milestones)
 
-    support_model = torchmodel.vgg19(weights = torchmodel.VGG19_Weights.IMAGENET1K_V1)
-    # scale feature of vgg16 model from 25088 to 512
-    support_model.avgpool = nn.AdaptiveAvgPool2d((1,1))
-    support_model.classifier = torch.nn.Identity()
-    support_model.eval()
-
+    support_model = None
 
     if torch.cuda.device_count() > 1:
         targer_model = nn.DataParallel(target_model, 
