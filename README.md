@@ -13,7 +13,7 @@ cumulative statistics to initialize weight for linear layers. Finally, a feature
 
 ## 1. Dependencies
 - Python 3.9 or above
-- Pytorh 1.12.1+cu116 or above
+- Pytorh 1.12.1+cu116 or higher
 - Other packages run:
 ```bash
 pip install -r requirements.txt
@@ -53,7 +53,7 @@ train(target_model)
 
 ## 3. Experiemental results
 
-We present the performance evaluation of our proposed method, TLV (Transfer Learning with Variance-based Regularization), along with comparisons to other methods on four different datasets: CIFAR-10, CIFAR-100, Food-101, and PetImages. The benchmarking is conducted using ResNet18 as the target model and VGG16 pretrained with ImageNet1K weights as the source model for the transfer process.
+We present the performance evaluation of our proposed method, TLVFC (Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover), along with comparisons to other methods on four different datasets: CIFAR-10, CIFAR-100, Food-101, and PetImages. The benchmarking is conducted using ResNet18 as the target model and VGG16 pretrained with ImageNet1K weights as the source model for the transfer process.
 
 | Method   | CIFAR10 | CIFAR100 | Food-101 | PetImages |
 |----------|---------|----------|----------|-----------|
@@ -63,7 +63,16 @@ We present the performance evaluation of our proposed method, TLV (Transfer Lear
 | TLVFC-cross | 0.7674 | 0.4293 | **0.7043** | 0.9686 |
 | TLVFC      | **0.7724** | **0.4294** | 0.7025 | **0.9696** |
 
-## 4. Citation
+## 4. Effectiveness on very deep networks
+
+The performance of TLVFC method when apply it on very deep networks. An experiment with the Resnet series is therefore conducted.
+
+|                   | resnet-34 | resnet-50 | resnet-101 | resnet-152 |
+|-------------------|-----------|-----------|------------|------------|
+| He Initialization | 0.7524    | 0.705     | 0.6728     | 0.6435     |
+| TLVFC             | 0.7696    | 0.7483    | 0.7195     | 0.6979     |
+
+## 5. Citation
 ```
 @misc{tlvfc2023,
       title={Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover}, 
