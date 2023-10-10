@@ -180,6 +180,8 @@ if __name__ == '__main__':
                         help='cuda device or cpu (default: %(default)s)')
     parser.add_argument('--seed', type=int, default=2,
                         help='random seed will start at seed = 2 (default: %(default)s)')
+    parser.add_argument('--model-base', type=str, default="resnet18", 
+                        help='The model name of target model (default: %(default)s)')
     parser.add_argument('--base-init', type=str, default="He",
                         help='The method to initialize for parameters ["He", "Glorot"] (default: %(default)s)')
     # choices= ['CIFAR10', 'Intel', 'PetImages']
@@ -213,7 +215,6 @@ if __name__ == '__main__':
                         help='Log result into WanDB')
     parser.add_argument('--wandb-name', type=str, default="wandb_log",
                         help='Log name in WanDB')
-    parser.add_argument('--model-base', type=str, default="resnet18")
     opt = parser.parse_args()
 
     try:
