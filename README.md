@@ -74,11 +74,11 @@ The performance of TLVFC method when apply it on very deep networks. An experime
 
 ## 5. Citation
 ```
-@misc{tlvfc2023,
-      title={Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover}, 
-      author={Thuan Duong and Thang Duong and Phuc Nguyen and Vinh Dinh},
-      year={2024},
-      eprint={},
-      archivePrefix={}
+@InProceedings{
+    title="Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover",
+    author="Thuan Duong Thang Duong and Phuc Nguyen and Vinh Dinh",
+    booktitle="Studies in Systems, Decision, and Control - AICI 2024",
+    year="2024",
+    publisher="Springer",
 }
 ```
