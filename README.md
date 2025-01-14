@@ -4,7 +4,7 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-%23EE4C2C.svg?style=for-the-badge&logo=PyTorch&logoColor=white)
 ![WAndB](https://raw.githubusercontent.com/wandb/assets/main/wandb-github-badge-28-gray.svg)
 
-This is the official implementation of paper: TLVFC
+This is the official implementation of paper: [TLVFC](https://link.springer.com/chapter/10.1007/978-3-031-63929-6_21)
 
 Knowledge from the pretrained model is transferred to the target model in the form of weight at convolution layers and in the form of
 cumulative statistics to initialize weight for linear layers. Finally, a feature crossover strategy is utilized to improve the performance of target model during training.
@@ -12,13 +12,17 @@ cumulative statistics to initialize weight for linear layers. Finally, a feature
 ![TLV-method](./figures/fig_pipeline.png)
 
 ## 1. Dependencies
+
 - Python 3.9 or above
 - Pytorh 1.12.1+cu116 or higher
 - Other packages run:
+
 ```bash
 pip install -r requirements.txt
 ```
+
 ## 2. Quick Start
+
 ```python
 from torchvision import models as torchmodel
 from models import CustomResnet
@@ -73,7 +77,8 @@ The performance of TLVFC method when apply it on very deep networks. An experime
 | TLVFC             | 0.7696    | 0.7483    | 0.7195     | 0.6979     |
 
 ## 5. Citation
-```
+
+```bash
 @InProceedings{
     title="Heterogeneous Transfer Learning Using Variance-based Mapping and Pre-trained Feature Crossover",
     author="Thuan Duong Thang Duong and Phuc Nguyen and Vinh Dinh",
